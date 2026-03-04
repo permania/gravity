@@ -1,0 +1,7 @@
+.direnv/
+target/
+gravity/target/
+gravlib/target/
+result/
+
+.projectile-cache.eld
