@@ -13,7 +13,14 @@ pub struct GravityArgs {
 #[derive(Debug, Subcommand)]
 pub enum GravityCommand {
     #[command()]
-    Init,
+    /// Create a new database file.
+    Init(InitArg),
+}
+
+#[derive(Debug, Args)]
+pub struct InitArg {
+    #[arg(default_value = "database")]
+    pub db_name: String,
 }
 
 const STYLES: Styles = Styles::styled()

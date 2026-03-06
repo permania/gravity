@@ -1,5 +1,11 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use std::fs::File;
+
+const DB_EXT: &'static str = ".gravdb";
+
+pub fn initialize_db(name: String) -> Result<(), std::io::Error> {
+    let db = File::create_new(name + DB_EXT)?;
+    println!("{:?}", db);
+    Ok(())
 }
 
 #[cfg(test)]
