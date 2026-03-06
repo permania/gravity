@@ -1,0 +1,23 @@
+use clap::{
+    Args, Parser, Subcommand,
+    builder::{Styles, styling::AnsiColor},
+};
+
+#[derive(Debug, Parser)]
+#[command(version, about, long_about = None, styles=STYLES)]
+pub struct GravityArgs {
+    #[clap(subcommand)]
+    pub cmd: GravityCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum GravityCommand {
+    #[command()]
+    Init,
+}
+
+const STYLES: Styles = Styles::styled()
+    .header(AnsiColor::Yellow.on_default())
+    .usage(AnsiColor::Yellow.on_default())
+    .literal(AnsiColor::BrightCyan.on_default())
+    .placeholder(AnsiColor::BrightWhite.on_default());

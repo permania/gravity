@@ -21,6 +21,8 @@
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
             cargo
+            rustc
+            rustfmt
             clippy
             rust-analyzer
           ];
@@ -28,7 +30,7 @@
 
         packages.default = craneLib.buildPackage {
           src = ./.;
-          buildInputs = with pkgs; [];
+          buildInputs = [];
         };
       }
     );

@@ -5,3 +5,4 @@ gravlib/target/
 result/
 
 .projectile-cache.eld
+*.gravdb
