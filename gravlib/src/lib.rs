@@ -106,23 +106,23 @@ fn parse_expr(pair: Pair<Rule>) -> Expr {
                 left
             }
         }
-	Rule::bool_lit => Expr::Bool(pair.as_str() == "true"),
-	Rule::decimal => Expr::Decimal(pair.as_str().parse().unwrap()),
-	Rule::string => {
-	    let s = pair.as_str();
-	    Expr::Text(s[1..s.len()-1].to_string())
-	}
-	Rule::unary => {
-	    let inner = pair.into_inner().next().unwrap();
-	    Expr::Negate(Box::new(parse_expr(inner)))
-	}
-	Rule::factorial => {
-	    let mut inner = pair.into_inner();
-	    let atom = parse_expr(inner.next().unwrap());
-	    let bang_count = inner.count() as u32;
-	    Expr::Factorial(Box::new(atom), bang_count)
-	}
-	Rule::self_ref => Expr::SelfRef,
+        Rule::bool_lit => Expr::Bool(pair.as_str() == "true"),
+        Rule::decimal => Expr::Decimal(pair.as_str().parse().unwrap()),
+        Rule::string => {
+            let s = pair.as_str();
+            Expr::Text(s[1..s.len() - 1].to_string())
+        }
+        Rule::unary => {
+            let inner = pair.into_inner().next().unwrap();
+            Expr::Negate(Box::new(parse_expr(inner)))
+        }
+        Rule::factorial => {
+            let mut inner = pair.into_inner();
+            let atom = parse_expr(inner.next().unwrap());
+            let bang_count = inner.count() as u32;
+            Expr::Factorial(Box::new(atom), bang_count)
+        }
+        Rule::self_ref => Expr::SelfRef,
         _ => parse_expr(pair.into_inner().next().unwrap()),
     }
 }
@@ -149,6 +149,41 @@ pub fn parse_assignment(pair: Pair<Rule>) -> Statement {
     }
 }
 
+pub fn parse_relationship(pair: Pair<Rule>) -> Statement {
+    let mut inner = pair.into_inner();
+
+    let vtype = match inner.next().unwrap().as_str() {
+        "num" => Type::Number,
+        "dec" => Type::Decimal,
+        "bool" => Type::Bool,
+        "text" => Type::Text,
+        _ => unreachable!(),
+    };
+
+    let vname = inner.next().unwrap().as_str().to_string();
+
+    let vvalue = parse_expr(inner.next().unwrap());
+
+    Statement::Relationship {
+        typ: vtype,
+        name: vname,
+        expr: vvalue,
+    }
+}
+
+pub fn parse_transform(pair: Pair<Rule>) -> Statement {
+    let mut inner = pair.into_inner();
+
+    let vname = inner.next().unwrap().as_str().to_string();
+
+    let vvalue = parse_expr(inner.next().unwrap());
+
+    Statement::Transform {
+        name: vname,
+        expr: vvalue,
+    }
+}
+
 pub fn initialize_db(name: String) -> Result<(), std::io::Error> {
     // let input = r#"dec b = 2.4; text a = "hi!";"#;
     let input = &std::fs::read_to_string(name + DB_EXT)?;
@@ -159,10 +194,21 @@ pub fn initialize_db(name: String) -> Result<(), std::io::Error> {
         for statement in pair.into_inner() {
             if statement.as_rule() == Rule::statement {
                 for inner in statement.into_inner() {
-                    if inner.as_rule() == Rule::assignment {
-                        let result = parse_assignment(inner);
-                        println!("{:?}", result);
-                    }
+		    match inner.as_rule() {
+			Rule::assignment => {
+			    let result = parse_assignment(inner);
+			    println!("{:?}", result);
+			}	
+			Rule::relationship => {
+			    let result = parse_relationship(inner);
+			    println!("{:?}", result);
+			}	
+			Rule::transform => {
+			    let result = parse_transform(inner);
+			    println!("{:?}", result);
+			}
+			_ => continue
+		    }
                 }
             }
         }
