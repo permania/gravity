@@ -8,8 +8,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = GravityArgs::parse();
 
     match cli.cmd {
-        GravityCommand::Init(InitArg {db_name: name}) => initialize_db(name)?,
+        GravityCommand::Init(InitArg { db_name: name }) => initialize_db(name)?,
+        // GravityCommand::Read(ReadArg { db_name: name }) => initialize_db(name)?,
+        _ => {}
     }
     Ok(())
 }
-

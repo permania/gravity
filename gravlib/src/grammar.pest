@@ -1,0 +1,34 @@
+WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
+COMMENT    = _{ "@" ~ (!"\n" ~ ANY)* }
+
+keyword = @{ ("num" | "dec" | "bool" | "text" | "true" | "false") ~ !(ASCII_ALPHANUMERIC | "_") }
+
+type_base  =  { "num" | "dec" | "bool" | "text" }
+bool_lit   =  { "true" | "false" }
+integer    = @{ ASCII_DIGIT+ }
+decimal    = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+number     =  { decimal | integer }
+string     = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+self_ref   =  { "%" }
+identifier = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+unary     = { "-" ~ atom }
+atom      = { unary | number | bool_lit | string | self_ref | identifier | "(" ~ expr ~ ")" }
+bang      = { "!" }
+factorial = { atom ~ bang+ }
+postfix   = { factorial | atom }
+choose    = { postfix ~ ("#" ~ postfix)* }
+power     = { choose ~ ("^" ~ power)? }
+mul_op    = { "*" | "/" | "&" }
+product   = { power ~ (mul_op ~ power)* }
+add_op    = { "+" | "-" }
+sum       = { product ~ (add_op ~ product)* }
+expr      = { sum }
+
+assignment   = { type_base ~ identifier ~ "=" ~ expr ~ ";" }
+relationship = { type_base ~ identifier ~ "<-" ~ expr ~ ";" }
+transform    = { identifier ~ "<=" ~ expr ~ ";" }
+declaration  = { type_base ~ identifier ~ ";" }
+
+statement = { assignment | relationship | transform | declaration }
+program   = { SOI ~ statement* ~ EOI }
