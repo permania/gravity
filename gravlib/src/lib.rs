@@ -106,6 +106,22 @@ fn parse_expr(pair: Pair<Rule>) -> Expr {
                 left
             }
         }
+	Rule::bool_lit => Expr::Bool(pair.as_str() == "true"),
+	Rule::decimal => Expr::Decimal(pair.as_str().parse().unwrap()),
+	Rule::string => {
+	    let s = pair.as_str();
+	    Expr::Text(s[1..s.len()-1].to_string())
+	}
+	Rule::unary => {
+	    let inner = pair.into_inner().next().unwrap();
+	    Expr::Negate(Box::new(parse_expr(inner)))
+	}
+	Rule::factorial => {
+	    let mut inner = pair.into_inner();
+	    let atom = parse_expr(inner.next().unwrap());
+	    let bang_count = inner.count() as u32;
+	    Expr::Factorial(Box::new(atom), bang_count)
+	}
 	Rule::self_ref => Expr::SelfRef,
         _ => parse_expr(pair.into_inner().next().unwrap()),
     }
