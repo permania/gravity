@@ -1,5 +1,7 @@
-use pest::{iterators::Pair};
+use pest::{Parser, iterators::Pair};
 use pest_derive::Parser;
+
+use crate::error::GravityError;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -43,6 +45,40 @@ pub enum Type {
     Bool,
     Text,
 }
+
+#[derive(Debug)]
+pub struct Program {
+    pub slf: Vec<Statement>
+}
+
+pub fn parse_program(contents: String) -> Program {
+    let mut stmts = Vec::<Statement>::new();
+
+    let pairs = GravityParser::parse(Rule::program, &contents).expect("parse failed");
+
+    for pair in pairs {
+        for statement in pair.into_inner() {
+            if statement.as_rule() == Rule::statement {
+                for inner in statement.into_inner() {
+                    match inner.as_rule() {
+                        Rule::assignment => {
+                            let result = parse_assignment(inner);
+			    stmts.push(result);
+                        }
+                        Rule::relationship => {
+                            let result = parse_relationship(inner);
+			    stmts.push(result);
+                        }
+                        _ => continue,
+                    }
+                }
+            }
+        }
+    }
+
+    Program { slf: stmts }
+}
+
 
 fn parse_expr(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
