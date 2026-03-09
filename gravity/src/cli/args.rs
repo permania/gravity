@@ -14,21 +14,15 @@ pub struct GravityArgs {
 pub enum GravityCommand {
     #[command()]
     /// Create a new database file
-    Init(InitArg),
+    Init(DBArg),
 
     #[command()]
     /// Read a database schema
-    Read(ReadArg),
+    Read(DBArg),
 }
 
 #[derive(Debug, Args)]
-pub struct InitArg {
-    #[arg(default_value = "database")]
-    pub db_name: String,
-}
-
-#[derive(Debug, Args)]
-pub struct ReadArg {
+pub struct DBArg {
     #[arg(default_value = "database")]
     pub db_name: String,
 }
