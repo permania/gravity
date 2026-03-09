@@ -17,6 +17,7 @@ pub fn read_db(name: String) -> Result<(), GravityError> {
     let input = std::fs::read_to_string(name + SCM_EXT)?;
     let program = ast::parse_program(input);
     typecheck::run(program)?;
+
     // println!("{:#?}", program);
     Ok(())
 }

@@ -37,12 +37,23 @@ pub enum Op {
     Choose,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Number,
     Decimal,
     Bool,
     Text,
+}
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Type::Number => write!(f, "Number"),
+            Type::Decimal => write!(f, "Decimal"),
+            Type::Bool => write!(f, "Boolean"),
+            Type::Text => write!(f, "Text"),
+        }
+    }
 }
 
 #[derive(Debug)]
