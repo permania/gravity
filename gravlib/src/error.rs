@@ -6,6 +6,9 @@ use thiserror::Error;
 pub enum GravityError {
     #[error("io error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("Use before declaration: {0}")]
+    UndefinedVariable(String),
 }
 
 pub fn handle_error(r: Result<(), GravityError>) -> ! {

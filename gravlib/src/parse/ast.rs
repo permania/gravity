@@ -11,7 +11,6 @@ pub struct GravityParser;
 pub enum Statement {
     Assignment { typ: Type, name: String, expr: Expr },
     Relationship { name: String, expr: Expr },
-    Declaration { typ: Type, name: String },
 }
 
 #[derive(Debug)]
@@ -48,7 +47,7 @@ pub enum Type {
 
 #[derive(Debug)]
 pub struct Program {
-    pub slf: Vec<Statement>
+    pub slf: Vec<Statement>,
 }
 
 pub fn parse_program(contents: String) -> Program {
@@ -63,11 +62,11 @@ pub fn parse_program(contents: String) -> Program {
                     match inner.as_rule() {
                         Rule::assignment => {
                             let result = parse_assignment(inner);
-			    stmts.push(result);
+                            stmts.push(result);
                         }
                         Rule::relationship => {
                             let result = parse_relationship(inner);
-			    stmts.push(result);
+                            stmts.push(result);
                         }
                         _ => continue,
                     }
@@ -78,7 +77,6 @@ pub fn parse_program(contents: String) -> Program {
 
     Program { slf: stmts }
 }
-
 
 fn parse_expr(pair: Pair<Rule>) -> Expr {
     match pair.as_rule() {
