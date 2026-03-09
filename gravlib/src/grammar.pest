@@ -26,9 +26,8 @@ sum       = { product ~ (add_op ~ product)* }
 expr      = { sum }
 
 assignment   = { type_base ~ identifier ~ "=" ~ expr ~ ";" }
-relationship = { type_base ~ identifier ~ "<-" ~ expr ~ ";" }
-transform    = { identifier ~ "<=" ~ expr ~ ";" }
 declaration  = { type_base ~ identifier ~ ";" }
+relationship = { identifier ~ "<-" ~ expr ~ ";" }
 
-statement = { assignment | relationship | transform | declaration }
+statement = { assignment | relationship | declaration }
 program   = { SOI ~ statement* ~ EOI }

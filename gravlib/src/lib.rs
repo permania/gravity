@@ -12,8 +12,7 @@ const DB_EXT: &'static str = ".gravscm";
 #[derive(Debug)]
 pub enum Statement {
     Assignment { typ: Type, name: String, expr: Expr },
-    Relationship { typ: Type, name: String, expr: Expr },
-    Transform { name: String, expr: Expr },
+    Relationship { name: String, expr: Expr },
     Declaration { typ: Type, name: String },
 }
 
@@ -152,33 +151,11 @@ pub fn parse_assignment(pair: Pair<Rule>) -> Statement {
 pub fn parse_relationship(pair: Pair<Rule>) -> Statement {
     let mut inner = pair.into_inner();
 
-    let vtype = match inner.next().unwrap().as_str() {
-        "num" => Type::Number,
-        "dec" => Type::Decimal,
-        "bool" => Type::Bool,
-        "text" => Type::Text,
-        _ => unreachable!(),
-    };
-
     let vname = inner.next().unwrap().as_str().to_string();
 
     let vvalue = parse_expr(inner.next().unwrap());
 
     Statement::Relationship {
-        typ: vtype,
-        name: vname,
-        expr: vvalue,
-    }
-}
-
-pub fn parse_transform(pair: Pair<Rule>) -> Statement {
-    let mut inner = pair.into_inner();
-
-    let vname = inner.next().unwrap().as_str().to_string();
-
-    let vvalue = parse_expr(inner.next().unwrap());
-
-    Statement::Transform {
         name: vname,
         expr: vvalue,
     }
@@ -203,10 +180,6 @@ pub fn initialize_db(name: String) -> Result<(), std::io::Error> {
 			    let result = parse_relationship(inner);
 			    println!("{:?}", result);
 			}	
-			Rule::transform => {
-			    let result = parse_transform(inner);
-			    println!("{:?}", result);
-			}
 			_ => continue
 		    }
                 }
@@ -232,7 +205,5 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
     }
 }
