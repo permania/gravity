@@ -34,7 +34,6 @@ pub enum Op {
     Div,
     Mod,
     Pow,
-    Choose,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -132,16 +131,6 @@ fn parse_expr(pair: Pair<Rule>) -> Expr {
 
             if let Some(right) = inner.next() {
                 Expr::BinOp(Box::new(left), Op::Pow, Box::new(parse_expr(right)))
-            } else {
-                left
-            }
-        }
-        Rule::choose => {
-            let mut inner = pair.into_inner();
-            let left = parse_expr(inner.next().unwrap());
-
-            if let Some(right) = inner.next() {
-                Expr::BinOp(Box::new(left), Op::Choose, Box::new(parse_expr(right)))
             } else {
                 left
             }

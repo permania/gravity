@@ -9,10 +9,10 @@ pub enum GravityError {
     #[error("io error: {0}")]
     Io(#[from] io::Error),
 
-    #[error("Use before declaration: {0}")]
+    #[error("use before declaration: {0}")]
     UndefinedVariable(String),
 
-    #[error("Duplicate declaration of variable: {0}")]
+    #[error("duplicate declaration of variable: {0}")]
     Duplication(String),
 
     #[error("type mismatch in {0}: expected {1}, found {2}")]
@@ -20,6 +20,12 @@ pub enum GravityError {
 
     #[error("type mismatch in expression: {0} and {1} are incompatible")]
     TypeMismatch(Type, Type),
+
+    #[error("cannot negate type: {0}")]
+    InvalidNegation(Type),
+
+    #[error("cannot take factorial of type: {0}")]
+    InvalidFactorial(Type),
 }
 
 pub fn handle_error(r: Result<(), GravityError>) -> ! {

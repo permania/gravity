@@ -1,10 +1,9 @@
-num a = 5;
-text b = "hello";
-num c = a + b;
+num a = 3 + 1;
+a <- % + true;
 
 @ num a = 5;
 @ num b = 3;
-@ dec c = 3.14;
+@ num c = 314;
 @ bool d = true;
 @ bool e = false;
 @ text f = "hello world";
@@ -23,7 +22,7 @@ num c = a + b;
 @ num s = a + b * c;
 @ num t = (a + b) * c;
 @ num u = a - b + g;
-@ dec v = c * 3.14;
+@ num v = c * 3400;
 @ num w = a ^ b ^ 2;
 @ num x = a # b;
 @ text y = "test string 123";

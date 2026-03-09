@@ -18,11 +18,28 @@ fn expr_type(expr: &Expr, def: &HashMap<String, Type>, name: &str) -> Result<Typ
             let l = expr_type(lhs, def, name)?;
             let r = expr_type(rhs, def, name)?;
             if l == r {
-                return Ok(l)
+                return Ok(l);
             }
-	    return Err(GravityError::TypeMismatch(r, l))
+            return Err(GravityError::TypeMismatch(r, l));
         }
-        _ => todo!(),
+        Expr::SelfRef => def
+            .get(name)
+            .cloned()
+            .ok_or(GravityError::UndefinedVariable(name.to_string())),
+        Expr::Negate(inner) => {
+            let expr_t = expr_type(inner, def, name)?;
+            match expr_t {
+                Type::Number | Type::Decimal => Ok(expr_t),
+                _ => Err(GravityError::InvalidNegation(expr_t)),
+            }
+        }
+	Expr::Factorial(inner, _) => {
+	    let expr_t = expr_type(inner, def, name)?;
+	    match expr_t {
+		Type::Number => Ok(expr_t),
+		_ => Err(GravityError::InvalidFactorial(expr_t)),
+	    }
+	},
     }
 }
 
@@ -30,6 +47,7 @@ pub fn run(prg: Program) -> Result<(), GravityError> {
     let mut def = HashMap::<String, Type>::new();
 
     for stmt in prg.slf {
+	println!("{stmt:?}");
         match stmt {
             Statement::Assignment { typ, name, expr } => {
                 let expr_t = expr_type(&expr, &def, &name)?;
@@ -42,10 +60,15 @@ pub fn run(prg: Program) -> Result<(), GravityError> {
                     return Err(GravityError::Duplication(name));
                 }
             }
-            Statement::Relationship { name, .. } => {
-                if def.get(&name).is_none() {
-                    return Err(GravityError::UndefinedVariable(name));
+            Statement::Relationship { name, expr } => {
+                let typ = match def.get(&name) {
+                    None => return Err(GravityError::UndefinedVariable(name)),
+                    Some(t) => t.clone(),
                 };
+                let expr_t = expr_type(&expr, &def, &name)?;
+                if typ != expr_t {
+                    return Err(GravityError::AssignmentMismatch(name, typ, expr_t));
+                }
             }
         }
     }
