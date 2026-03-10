@@ -20,7 +20,7 @@ fn expr_type(expr: &Expr, def: &HashMap<String, Type>, name: &str) -> Result<Typ
             if l == r {
                 return Ok(l);
             }
-            return Err(GravityError::TypeMismatch(r, l));
+            Err(GravityError::TypeMismatch(r, l))
         }
         Expr::SelfRef => def
             .get(name)
@@ -33,13 +33,13 @@ fn expr_type(expr: &Expr, def: &HashMap<String, Type>, name: &str) -> Result<Typ
                 _ => Err(GravityError::InvalidNegation(expr_t)),
             }
         }
-	Expr::Factorial(inner, _) => {
-	    let expr_t = expr_type(inner, def, name)?;
-	    match expr_t {
-		Type::Number => Ok(expr_t),
-		_ => Err(GravityError::InvalidFactorial(expr_t)),
-	    }
-	},
+        Expr::Factorial(inner, _) => {
+            let expr_t = expr_type(inner, def, name)?;
+            match expr_t {
+                Type::Number => Ok(expr_t),
+                _ => Err(GravityError::InvalidFactorial(expr_t)),
+            }
+        }
     }
 }
 
@@ -47,7 +47,6 @@ pub fn run(prg: Program) -> Result<(), GravityError> {
     let mut def = HashMap::<String, Type>::new();
 
     for stmt in prg.slf {
-	println!("{stmt:?}");
         match stmt {
             Statement::Assignment { typ, name, expr } => {
                 let expr_t = expr_type(&expr, &def, &name)?;

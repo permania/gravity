@@ -1,5 +1,103 @@
-num a = 3 + 1;
-a <- % + true;
+num a = 5;
+a <- % * %;
+
+dec b = 5.2;
+dec c = 6.8;
+b <- % * c;
+c <- b * %;
+b <- % * %;
+b <- % / 2.0;
+
+text x = "hello ";
+text y = "world";
+text z = x + y;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @ num a = 5;
 @ num b = 3;
@@ -10,7 +108,7 @@ a <- % + true;
 @ num g = -5;
 @ num h = 5!;
 @ num i = 5!!;
-@ num j = 6 # 3;
+@ num j = 6 + 3 * 2;
 @ num k = 2 ^ 10;
 @ num l = 2 ^ 3 ^ 2;
 @ num m = 10 & 3;
@@ -24,7 +122,7 @@ a <- % + true;
 @ num u = a - b + g;
 @ num v = c * 3400;
 @ num w = a ^ b ^ 2;
-@ num x = a # b;
+@ num x = a & b;
 @ text y = "test string 123";
 @ bool z = false;
 @ num aa = 100;

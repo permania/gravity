@@ -7,13 +7,13 @@ use crate::error::GravityError;
 #[grammar = "grammar.pest"]
 pub struct GravityParser;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     Assignment { typ: Type, name: String, expr: Expr },
     Relationship { name: String, expr: Expr },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Number(i64),
     Decimal(f64),
@@ -26,7 +26,7 @@ pub enum Expr {
     BinOp(Box<Expr>, Op, Box<Expr>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Op {
     Add,
     Sub,
@@ -55,7 +55,7 @@ impl std::fmt::Display for Type {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Program {
     pub slf: Vec<Statement>,
 }
