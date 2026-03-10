@@ -1,23 +1,27 @@
-use std::collections::HashMap;
-
 use crate::{error::GravityError, parse::ast::Op};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 use super::ast::{Expr, Program, Statement};
 
-#[derive(Debug)]
-struct State {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct State {
     vars: HashMap<String, Value>,
+    def: HashMap<String, Value>,
+    rel: HashMap<String, Vec<Expr>>,
 }
 
 impl State {
     fn new() -> Self {
         Self {
             vars: HashMap::<String, Value>::new(),
+            def: HashMap::<String, Value>::new(),
+            rel: HashMap::<String, Vec<Expr>>::new(),
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 enum Value {
     Number(i64),
     Decimal(f64),
@@ -36,7 +40,7 @@ fn eval_expr(expr: &Expr, state: &State, name: &str) -> Value {
         Expr::Negate(e) => match eval_expr(e, state, name) {
             Value::Number(n) => Value::Number(-n),
             Value::Decimal(d) => Value::Decimal(-d),
-            _ => unreachable!(), // ?? how did this get past the type checker
+            _ => unreachable!("how did this get past the type checker"),
         },
         Expr::Factorial(e, bangs) => {
             let val = eval_expr(e, state, name);
@@ -80,7 +84,7 @@ fn eval_expr(expr: &Expr, state: &State, name: &str) -> Value {
     }
 }
 
-pub fn eval_program(prg: Program) -> Result<(), GravityError> {
+pub fn eval_program(prg: Program) -> Result<State, GravityError> {
     let mut state = State::new();
 
     for stmt in prg.slf {
@@ -89,17 +93,23 @@ pub fn eval_program(prg: Program) -> Result<(), GravityError> {
                 state
                     .vars
                     .insert(name.clone(), eval_expr(&expr, &state, &name));
-                println!("{:#?}", state);
-                println!("");
+                state
+                    .def
+                    .insert(name.clone(), eval_expr(&expr, &state, &name));
             }
             Statement::Relationship { name, expr } => {
                 state
+                    .rel
+                    .entry(name.clone())
+                    .or_insert_with(|| Vec::new())
+                    .push(expr.clone());
+
+                state
                     .vars
                     .insert(name.clone(), eval_expr(&expr, &state, &name));
-                println!("{:#?}", state);
-                println!("");
             }
-        }
+        };
     }
-    Ok(())
+
+    Ok(state)
 }

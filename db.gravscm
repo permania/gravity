@@ -1,16 +1,19 @@
 num a = 5;
-a <- % * %;
+num b = 2;
+a <- % + b;
+a <- % + %;
 
-dec b = 5.2;
-dec c = 6.8;
-b <- % * c;
-c <- b * %;
-b <- % * %;
-b <- % / 2.0;
 
-text x = "hello ";
-text y = "world";
-text z = x + y;
+
+
+
+
+
+
+
+
+
+
 
 
 

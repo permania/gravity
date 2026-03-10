@@ -6,7 +6,7 @@ use error::GravityError;
 mod parse;
 use parse::{
     ast::{self, Rule},
-    eval::{self, eval_program},
+    eval::{self},
     typecheck,
 };
 use pest::Parser;
@@ -18,9 +18,10 @@ pub fn read_db(name: String) -> Result<(), GravityError> {
     let input = std::fs::read_to_string(name + SCM_EXT)?;
     let program = ast::parse_program(input);
     typecheck::run(program.clone())?;
-    eval_program(program)?;
+    let db_state = eval::eval_program(program)?;
+    let output = postcard::to_allocvec(&db_state);
+    println!("{:02x?}", output);
 
-    // println!("{:#?}", program);
     Ok(())
 }
 
