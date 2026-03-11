@@ -1,5 +1,6 @@
 use std::{io, process};
 
+use reedline_repl_rs::reedline;
 use thiserror::Error;
 
 use crate::parse::ast::Type;
@@ -29,7 +30,10 @@ pub enum GravityError {
 
     #[error("serialization error: {0}")]
     SerializeError(#[from] postcard::Error),
-    
+
+    #[error("repl error: {0}")]
+    ReplError(#[from] reedline_repl_rs::Error),
+
     #[error("filepath has no extension")]
     NoExtension,
 }

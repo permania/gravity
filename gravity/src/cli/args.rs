@@ -4,7 +4,7 @@ use clap::{
 };
 
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None, styles=STYLES)]
+#[command(version, about, long_about = None)]
 pub struct GravityArgs {
     #[clap(subcommand)]
     pub cmd: GravityCommand,
@@ -35,6 +35,10 @@ pub enum GravityCommand {
     #[command()]
     /// Decompile a database file to a schema that produces it
     Dump(DBArg),
+
+    #[command()]
+    /// Run the Gravity REPL
+    Repl(DBArg),
 }
 
 #[derive(Debug, Args)]
@@ -42,9 +46,3 @@ pub struct DBArg {
     #[arg(default_value = "database")]
     pub db_name: String,
 }
-
-const STYLES: Styles = Styles::styled()
-    .header(AnsiColor::Yellow.on_default())
-    .usage(AnsiColor::Yellow.on_default())
-    .literal(AnsiColor::BrightCyan.on_default())
-    .placeholder(AnsiColor::BrightWhite.on_default());

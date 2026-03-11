@@ -1,13 +1,16 @@
 use std::{
- collections::HashMap, fs::{self, File}, io::{BufReader, Read}, path::{Path, PathBuf}
+    collections::HashMap,
+    fs::{self, File},
+    io::{BufReader, Read},
+    path::{Path, PathBuf},
 };
 
-mod error;
+pub mod error;
 use error::GravityError;
 
 mod parse;
 use indexmap::IndexMap;
-use parse::{
+pub use parse::{
     ast::{self, Expr, Op, Rule},
     eval::{self, Assignment, State, Value},
     typecheck,
@@ -15,11 +18,13 @@ use parse::{
 use pest::Parser;
 use serde::de::value;
 
+pub type GravityState = eval::State;
+
 const DB_EXT: &str = "gravdb";
 const SCM_EXT: &str = "gravscm";
 const MAGIC: [u8; 9] = [0xff, 0xfe, 0xc0, 0xaa, 0xab, b'g', b'r', b'a', b'v'];
 
-fn read_db_state(name: String) -> Result<State, GravityError> {
+pub fn read_db_state(name: String) -> Result<State, GravityError> {
     let fp = PathBuf::from(name);
     let file = File::open(&fp)?;
     let mut reader = BufReader::new(file);
@@ -100,6 +105,7 @@ pub fn dump_db(name: String) -> Result<(), GravityError> {
             ),
         }
     }
+
     fn op_to_string(op: &Op) -> &str {
         match op {
             Op::Add => "+",
@@ -110,14 +116,11 @@ pub fn dump_db(name: String) -> Result<(), GravityError> {
             Op::Pow => "^",
         }
     }
+
     fn create_assignment(a: Assignment) -> String {
-        format!(
-            "{} {} = {};",
-	    a.typ,
-            a.name,
-            expr_to_string(&a.expr)
-        )
+        format!("{} {} = {};", a.typ, a.name, expr_to_string(&a.expr))
     }
+
     fn create_relationship(name: &str, expr: &Expr) -> String {
         format!("{} <- {};", name, expr_to_string(expr))
     }
@@ -131,9 +134,9 @@ pub fn dump_db(name: String) -> Result<(), GravityError> {
     }
 
     for pair in db_state.rel.into_iter() {
-	for expr in pair.1.iter() {
-	    lines.push(create_relationship(&pair.0, expr));
-	}
+        for expr in pair.1.iter() {
+            lines.push(create_relationship(&pair.0, expr));
+        }
     }
 
     let content = lines.join("\n");

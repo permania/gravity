@@ -1,3 +1,5 @@
+use std::default;
+
 use crate::{error::GravityError, parse::ast::Op};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -8,7 +10,7 @@ use super::ast::{Expr, Program, Statement, Type};
 pub struct Assignment {
     pub name: String,
     pub expr: Expr,
-    pub typ: Type
+    pub typ: Type,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -16,6 +18,12 @@ pub struct State {
     pub vars: IndexMap<String, Value>,
     pub def: Vec<Assignment>,
     pub rel: IndexMap<String, Vec<Expr>>,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self { vars: Default::default(), def: Default::default(), rel: Default::default() }
+    }
 }
 
 impl State {
@@ -111,9 +119,11 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
                 state
                     .vars
                     .insert(name.clone(), eval_expr(&expr, &state, &name));
-                state
-                    .def
-                    .push(Assignment { name: name.clone(), expr: expr, typ: typ })
+                state.def.push(Assignment {
+                    name: name.clone(),
+                    expr: expr,
+                    typ: typ,
+                })
             }
             Statement::Relationship { name, expr } => {
                 state

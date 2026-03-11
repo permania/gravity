@@ -1,6 +1,9 @@
 mod cli;
 use gravlib::{bin_db, compile_db, dump_db, initialize_db, read_db, state_db};
 
+mod gravity_repl;
+use gravity_repl::repl;
+
 use clap::Parser;
 use cli::args::{DBArg, GravityArgs, GravityCommand};
 
@@ -14,7 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         GravityCommand::State(DBArg { db_name: name }) => state_db(name)?,
         GravityCommand::Compile(DBArg { db_name: name }) => compile_db(name)?,
         GravityCommand::Dump(DBArg { db_name: name }) => dump_db(name)?,
+        GravityCommand::Repl(DBArg { db_name: name }) => repl::run(name)?,
     }
-    
+
     Ok(())
 }
