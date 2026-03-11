@@ -1,22 +1,22 @@
 use crate::{error::GravityError, parse::ast::Op};
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use super::ast::{Expr, Program, Statement};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct State {
-    vars: HashMap<String, Value>,
-    def: HashMap<String, Value>,
-    rel: HashMap<String, Vec<Expr>>,
+    vars: IndexMap<String, Value>,
+    def: IndexMap<String, Value>,
+    pub(crate) rel: IndexMap<String, Vec<Expr>>,
 }
 
 impl State {
     fn new() -> Self {
         Self {
-            vars: HashMap::<String, Value>::new(),
-            def: HashMap::<String, Value>::new(),
-            rel: HashMap::<String, Vec<Expr>>::new(),
+            vars: IndexMap::<String, Value>::new(),
+            def: IndexMap::<String, Value>::new(),
+            rel: IndexMap::<String, Vec<Expr>>::new(),
         }
     }
 }

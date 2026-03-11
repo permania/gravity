@@ -19,6 +19,18 @@ pub enum GravityCommand {
     #[command()]
     /// Read a database schema
     Read(DBArg),
+
+    #[command()]
+    /// Read a database schema to binary format
+    Bin(DBArg),
+
+    #[command()]
+    /// Compile a database schema to binary format
+    Compile(DBArg),
+
+    #[command()]
+    /// Read a database schema and print the State
+    State(DBArg),
 }
 
 #[derive(Debug, Args)]

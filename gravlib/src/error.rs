@@ -26,6 +26,12 @@ pub enum GravityError {
 
     #[error("cannot take factorial of type: {0}")]
     InvalidFactorial(Type),
+
+    #[error("serialization error: {0}")]
+    SerializeError(#[from] postcard::Error),
+    
+    #[error("filepath has no extension")]
+    NoExtension,
 }
 
 pub fn handle_error(r: Result<(), GravityError>) -> ! {

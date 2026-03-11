@@ -1,6 +1,6 @@
 use pest::{Parser, iterators::Pair};
-use serde::{Serialize, Deserialize};
 use pest_derive::Parser;
+use serde::{Deserialize, Serialize};
 
 use crate::error::GravityError;
 
