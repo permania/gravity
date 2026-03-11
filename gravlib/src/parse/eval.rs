@@ -2,31 +2,49 @@ use crate::{error::GravityError, parse::ast::Op};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use super::ast::{Expr, Program, Statement};
+use super::ast::{Expr, Program, Statement, Type};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Assignment {
+    pub name: String,
+    pub expr: Expr,
+    pub typ: Type
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct State {
-    vars: IndexMap<String, Value>,
-    def: IndexMap<String, Value>,
-    pub(crate) rel: IndexMap<String, Vec<Expr>>,
+    pub vars: IndexMap<String, Value>,
+    pub def: Vec<Assignment>,
+    pub rel: IndexMap<String, Vec<Expr>>,
 }
 
 impl State {
     fn new() -> Self {
         Self {
             vars: IndexMap::<String, Value>::new(),
-            def: IndexMap::<String, Value>::new(),
+            def: Vec::<Assignment>::new(),
             rel: IndexMap::<String, Vec<Expr>>::new(),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-enum Value {
+pub enum Value {
     Number(i64),
     Decimal(f64),
     Text(String),
     Boolean(bool),
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Number(v) => write!(f, "{}", v),
+            Value::Decimal(v) => write!(f, "{}", v),
+            Value::Boolean(v) => write!(f, "{}", v),
+            Value::Text(v) => write!(f, "{:?}", v),
+        }
+    }
 }
 
 fn eval_expr(expr: &Expr, state: &State, name: &str) -> Value {
@@ -89,13 +107,13 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
 
     for stmt in prg.slf {
         match stmt {
-            Statement::Assignment { name, expr, .. } => {
+            Statement::Assignment { name, expr, typ } => {
                 state
                     .vars
                     .insert(name.clone(), eval_expr(&expr, &state, &name));
                 state
                     .def
-                    .insert(name.clone(), eval_expr(&expr, &state, &name));
+                    .push(Assignment { name: name.clone(), expr: expr, typ: typ })
             }
             Statement::Relationship { name, expr } => {
                 state

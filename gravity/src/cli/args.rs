@@ -31,6 +31,10 @@ pub enum GravityCommand {
     #[command()]
     /// Read a database schema and print the State
     State(DBArg),
+
+    #[command()]
+    /// Decompile a database file to a schema that produces it
+    Dump(DBArg),
 }
 
 #[derive(Debug, Args)]

@@ -1,8 +1,5 @@
 use std::{
-    collections::HashMap,
-    fs::{self, File},
-    io::{BufReader, Read},
-    path::{Path, PathBuf},
+ collections::HashMap, fs::{self, File}, io::{BufReader, Read}, path::{Path, PathBuf}
 };
 
 mod error;
@@ -11,11 +8,12 @@ use error::GravityError;
 mod parse;
 use indexmap::IndexMap;
 use parse::{
-    ast::{self, Rule},
-    eval::{self, State},
+    ast::{self, Expr, Op, Rule},
+    eval::{self, Assignment, State, Value},
     typecheck,
 };
 use pest::Parser;
+use serde::de::value;
 
 const DB_EXT: &str = "gravdb";
 const SCM_EXT: &str = "gravscm";
@@ -34,8 +32,8 @@ fn read_db_state(name: String) -> Result<State, GravityError> {
         let db_state = postcard::from_bytes::<eval::State>(&db_bytes)?;
         Ok(db_state)
     } else {
-	std::mem::drop(reader);
-	let input = fs::read_to_string(&fp)?;
+        std::mem::drop(reader);
+        let input = fs::read_to_string(&fp)?;
         let program = ast::parse_program(input);
         typecheck::run(program.clone())?;
         let db_state = eval::eval_program(program)?;
@@ -80,6 +78,67 @@ pub fn read_db(name: String) -> Result<(), GravityError> {
     let output = postcard::to_allocvec(&db_state)?;
     todo!("pretty reading");
 
+    Ok(())
+}
+
+pub fn dump_db(name: String) -> Result<(), GravityError> {
+    fn expr_to_string(expr: &Expr) -> String {
+        match expr {
+            Expr::Number(n) => n.to_string(),
+            Expr::Decimal(d) => d.to_string(),
+            Expr::Bool(b) => b.to_string(),
+            Expr::Text(s) => format!("\"{}\"", s),
+            Expr::Ident(n) => n.clone(),
+            Expr::SelfRef => "%".to_string(),
+            Expr::Negate(e) => format!("-{}", expr_to_string(e)),
+            Expr::Factorial(e, n) => format!("{}{}", expr_to_string(e), "!".repeat(*n as usize)),
+            Expr::BinOp(l, op, r) => format!(
+                "({} {} {})",
+                expr_to_string(l),
+                op_to_string(op),
+                expr_to_string(r)
+            ),
+        }
+    }
+    fn op_to_string(op: &Op) -> &str {
+        match op {
+            Op::Add => "+",
+            Op::Sub => "-",
+            Op::Mul => "*",
+            Op::Div => "/",
+            Op::Mod => "&",
+            Op::Pow => "^",
+        }
+    }
+    fn create_assignment(a: Assignment) -> String {
+        format!(
+            "{} {} = {};",
+	    a.typ,
+            a.name,
+            expr_to_string(&a.expr)
+        )
+    }
+    fn create_relationship(name: &str, expr: &Expr) -> String {
+        format!("{} <- {};", name, expr_to_string(expr))
+    }
+
+    let fp = PathBuf::from(&name);
+    let mut lines = Vec::<String>::new();
+    let db_state = read_db_state(name)?;
+
+    for a in db_state.def.into_iter() {
+        lines.push(create_assignment(a));
+    }
+
+    for pair in db_state.rel.into_iter() {
+	for expr in pair.1.iter() {
+	    lines.push(create_relationship(&pair.0, expr));
+	}
+    }
+
+    let content = lines.join("\n");
+
+    fs::write(fp.with_extension(SCM_EXT), content)?;
     Ok(())
 }
 

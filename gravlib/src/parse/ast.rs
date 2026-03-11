@@ -37,7 +37,7 @@ pub enum Op {
     Pow,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Type {
     Number,
     Decimal,
@@ -48,10 +48,10 @@ pub enum Type {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Number => write!(f, "Number"),
-            Type::Decimal => write!(f, "Decimal"),
-            Type::Bool => write!(f, "Boolean"),
-            Type::Text => write!(f, "Text"),
+            Type::Number => write!(f, "num"),
+            Type::Decimal => write!(f, "dec"),
+            Type::Bool => write!(f, "bool"),
+            Type::Text => write!(f, "text"),
         }
     }
 }

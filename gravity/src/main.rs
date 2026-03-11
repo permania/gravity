@@ -1,5 +1,5 @@
 mod cli;
-use gravlib::{bin_db, compile_db, initialize_db, read_db, state_db};
+use gravlib::{bin_db, compile_db, dump_db, initialize_db, read_db, state_db};
 
 use clap::Parser;
 use cli::args::{DBArg, GravityArgs, GravityCommand};
@@ -13,6 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         GravityCommand::Bin(DBArg { db_name: name }) => bin_db(name)?,
         GravityCommand::State(DBArg { db_name: name }) => state_db(name)?,
         GravityCommand::Compile(DBArg { db_name: name }) => compile_db(name)?,
+        GravityCommand::Dump(DBArg { db_name: name }) => dump_db(name)?,
     }
     
     Ok(())
