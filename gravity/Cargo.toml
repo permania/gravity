@@ -10,3 +10,7 @@ gravlib = { path = "../gravlib" }
 pest = "2.8.6"
 reedline-repl-rs = { version = "1.3.0", features = ["derive"] }
 thiserror = "2.0.18"
+
+[[bin]]
+name = "grav"
+path = "src/main.rs"
