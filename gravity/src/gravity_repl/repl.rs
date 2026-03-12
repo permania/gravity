@@ -1,9 +1,17 @@
+use gravlib::ast::GravityParser;
 use gravlib::error::GravityError;
-use gravlib::{Assignment, GravityState, Value, ast};
+use gravlib::{Assignment, GravityState, Rule, Value, ast};
 use pest::Parser;
 use reedline_repl_rs::Repl;
 use reedline_repl_rs::clap::{Arg, ArgMatches, Command};
 use reedline_repl_rs::yansi::Paint;
+
+fn print_state(
+    _args: ArgMatches,
+    context: &mut GravityState,
+) -> Result<Option<String>, GravityError> {
+    Ok(Some(format!("{:#?}", context)))
+}
 
 fn put(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
     let var = args.get_one::<String>("var").unwrap();
@@ -42,7 +50,7 @@ fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
     let stmt = program.slf.into_iter().next().unwrap();
 
     if context.vars.contains_key(ident) {
-	return Err(GravityError::Duplication(ident.to_owned()));
+        return Err(GravityError::Duplication(ident.to_owned()));
     }
     context.def.push(Assignment::from(stmt));
 
@@ -53,6 +61,38 @@ fn remove(arg: ArgMatches, context: &mut GravityState) -> Result<Option<String>,
     let ident = arg.get_one::<String>("var").unwrap();
     context.def.retain(|d| d.name != *ident);
     context.rel.shift_remove(ident);
+
+    Ok(None)
+}
+
+fn relate(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
+    let ident = args.get_one::<String>("var").unwrap();
+
+    if !context.def.iter().any(|d| d.name == *ident) {
+        return Err(GravityError::UndefinedVariable(ident.to_owned()));
+    }
+
+    let expr = args
+        .get_many::<String>("expr")
+        .unwrap()
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let content = format!("{} <- {};", ident, expr);
+    let pair = GravityParser::parse(Rule::relationship, &content)?
+        .next()
+        .unwrap();
+    let rel = ast::parse_relationship(pair);
+
+    if let ast::Statement::Relationship { expr, .. } = rel {
+        context
+            .rel
+            .entry(ident.to_owned())
+            .or_insert_with(Vec::new)
+            .push(expr)
+    } else {
+        unreachable!();
+    }
 
     Ok(None)
 }
@@ -86,6 +126,22 @@ pub fn run(name: String) -> Result<(), GravityError> {
                 .about("Remove a variable from the database")
                 .arg(Arg::new("var").required(true)),
             remove,
+        )
+        .with_command(
+            Command::new("relate")
+                .about("Declare a new relationship")
+                .arg(Arg::new("var").required(true))
+                .arg(
+                    Arg::new("expr")
+                        .required(true)
+                        .num_args(1..)
+                        .allow_hyphen_values(true),
+                ),
+            relate,
+        )
+        .with_command(
+            Command::new("state").about("DEBUG: print the database state"),
+            print_state,
         )
         .without_clock()
         .with_prompt(&Paint::white("gravity ").to_string())

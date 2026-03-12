@@ -3,7 +3,7 @@ use std::{io, process};
 use reedline_repl_rs::reedline;
 use thiserror::Error;
 
-use crate::parse::ast::Type;
+use crate::{parse::ast::Type};
 
 #[derive(Debug, Error)]
 pub enum GravityError {
@@ -39,6 +39,9 @@ pub enum GravityError {
 
     #[error("filepath has no extension")]
     NoExtension,
+
+    #[error("pest error: {0}")]
+    PestError(#[from] pest::error::Error<crate::Rule>),
 }
 
 pub fn handle_error(r: Result<(), GravityError>) -> ! {
