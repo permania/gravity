@@ -8,9 +8,18 @@ use super::ast::{Expr, Program, Statement, Type};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Assignment {
+    pub typ: Type,
     pub name: String,
     pub expr: Expr,
-    pub typ: Type,
+}
+
+impl From<Statement> for Assignment {
+    fn from(stmt: Statement) -> Self {
+        match stmt {
+            Statement::Assignment { typ, name, expr } => Assignment { typ, name, expr },
+            _ => panic!("expected Assignment"),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,7 +31,11 @@ pub struct State {
 
 impl Default for State {
     fn default() -> Self {
-        Self { vars: Default::default(), def: Default::default(), rel: Default::default() }
+        Self {
+            vars: Default::default(),
+            def: Default::default(),
+            rel: Default::default(),
+        }
     }
 }
 
@@ -32,6 +45,22 @@ impl State {
             vars: IndexMap::<String, Value>::new(),
             def: Vec::<Assignment>::new(),
             rel: IndexMap::<String, Vec<Expr>>::new(),
+        }
+    }
+
+    pub fn compute(&mut self) -> () {
+        self.vars.clear();
+        for v in self.def.iter() {
+            let base = eval_expr(&v.expr, self, &v.name);
+            self.vars.insert(v.name.clone(), base);
+        }
+        for v in self.def.iter() {
+            if let Some(exprs) = self.rel.get(&v.name) {
+                for expr in exprs {
+                    let val = eval_expr(expr, self, &v.name);
+                    self.vars.insert(v.name.clone(), val);
+                }
+            }
         }
     }
 }
@@ -62,7 +91,14 @@ fn eval_expr(expr: &Expr, state: &State, name: &str) -> Value {
         Expr::Bool(b) => Value::Boolean(*b),
         Expr::Text(s) => Value::Text(s.to_owned()),
         Expr::Ident(n) => state.vars.get(n).unwrap().clone(),
-        Expr::SelfRef => state.vars.get(name).unwrap().clone(),
+        Expr::SelfRef => state.vars.get(name).cloned().unwrap_or_else(|| {
+            state
+                .def
+                .iter()
+                .find(|d| d.name == name)
+                .map(|d| eval_expr(&d.expr, state, name))
+                .unwrap()
+        }),
         Expr::Negate(e) => match eval_expr(e, state, name) {
             Value::Number(n) => Value::Number(-n),
             Value::Decimal(d) => Value::Decimal(-d),
@@ -116,9 +152,6 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
     for stmt in prg.slf {
         match stmt {
             Statement::Assignment { name, expr, typ } => {
-                state
-                    .vars
-                    .insert(name.clone(), eval_expr(&expr, &state, &name));
                 state.def.push(Assignment {
                     name: name.clone(),
                     expr: expr,
@@ -131,13 +164,11 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
                     .entry(name.clone())
                     .or_insert_with(|| Vec::new())
                     .push(expr.clone());
-
-                state
-                    .vars
-                    .insert(name.clone(), eval_expr(&expr, &state, &name));
             }
         };
     }
+    state.compute();
+    println!("{:#?}", state);
 
     Ok(state)
 }

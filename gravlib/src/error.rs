@@ -34,6 +34,9 @@ pub enum GravityError {
     #[error("repl error: {0}")]
     ReplError(#[from] reedline_repl_rs::Error),
 
+    #[error("failed to parse value: {0}")]
+    ParseError(String),
+
     #[error("filepath has no extension")]
     NoExtension,
 }
