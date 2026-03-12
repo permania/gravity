@@ -1,7 +1,8 @@
-use std::default;
+use std::{any::Any, default};
 
 use crate::{error::GravityError, parse::ast::Op};
 use indexmap::IndexMap;
+use reedline_repl_rs::reedline::UndoBehavior;
 use serde::{Deserialize, Serialize};
 
 use super::ast::{Expr, Program, Statement, Type};
@@ -73,6 +74,17 @@ pub enum Value {
     Boolean(bool),
 }
 
+impl Value {
+    pub fn to_type(&self) -> Type {
+	match self {
+	    Self::Number(_) => Type::Number,
+	    Self::Decimal(_) => Type::Decimal,
+	    Self::Text(_) => Type::Text,
+	    Self::Boolean(_) => Type::Bool,
+	}
+    }
+}
+
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -81,6 +93,66 @@ impl std::fmt::Display for Value {
             Value::Boolean(v) => write!(f, "{}", v),
             Value::Text(v) => write!(f, "{:?}", v),
         }
+    }
+}
+
+pub fn eval_expr_nameless(expr: &Expr, state: &State) -> Result<Value, GravityError> {
+    match expr {
+        Expr::Number(n) => Ok(Value::Number(*n)),
+        Expr::Decimal(d) => Ok(Value::Decimal(*d)),
+        Expr::Bool(b) => Ok(Value::Boolean(*b)),
+        Expr::Text(s) => Ok(Value::Text(s.to_owned())),
+        Expr::Ident(n) => Ok(state
+            .vars
+            .get(n)
+            .ok_or(GravityError::UndefinedVariable(n.to_owned())).cloned()?),
+        Expr::Negate(e) => Ok(match eval_expr_nameless(e, state)? {
+            Value::Number(n) => Value::Number(-n),
+            Value::Decimal(d) => Value::Decimal(-d),
+            _ => unreachable!("how did this get past the type checker"),
+        }),
+        Expr::Factorial(e, bangs) => Ok({
+            let val = eval_expr_nameless(e, state)?;
+            match val {
+                Value::Number(v) => {
+                    let result = (1..=v)
+                        .filter(|i| (v - i) % (*bangs as i64) == 0)
+                        .fold(1i64, |acc, i| acc * i);
+                    Value::Number(result)
+                }
+                _ => unreachable!(),
+            }
+        }),
+        Expr::BinOp(left, op, right) => {
+            let lhs = eval_expr_nameless(left, state)?;
+            let rhs = eval_expr_nameless(right, state)?;
+            let lhs_t = lhs.to_type();
+            let rhs_t = rhs.to_type();
+	    match (lhs, rhs) {
+                (Value::Number(l), Value::Number(r)) => match op {
+                    Op::Add => Ok(Value::Number(l + r)),
+                    Op::Sub => Ok(Value::Number(l - r)),
+                    Op::Mul => Ok(Value::Number(l * r)),
+                    Op::Div => Ok(Value::Number(l / r)),
+                    Op::Mod => Ok(Value::Number(l.rem_euclid(r))),
+                    Op::Pow => Ok(Value::Number(l.pow(r as u32))),
+                },
+                (Value::Decimal(l), Value::Decimal(r)) => match op {
+                    Op::Add => Ok(Value::Decimal(l + r)),
+                    Op::Sub => Ok(Value::Decimal(l - r)),
+                    Op::Mul => Ok(Value::Decimal(l * r)),
+                    Op::Div => Ok(Value::Decimal(l / r)),
+                    Op::Mod => Ok(Value::Decimal(l.rem_euclid(r))),
+                    Op::Pow => Ok(Value::Decimal(l.powf(r))),
+                },
+                (Value::Text(l), Value::Text(r)) => match op {
+                    Op::Add => Ok(Value::Text(l + &r)),
+                    _ => unreachable!("Text can only be concatenated"),
+                },
+                _ => Err(GravityError::TypeMismatch(lhs_t, rhs_t))
+            }
+        },
+        Expr::SelfRef => Err(GravityError::SelfRef),
     }
 }
 
@@ -140,7 +212,7 @@ fn eval_expr(expr: &Expr, state: &State, name: &str) -> Value {
                     Op::Add => Value::Text(l + &r),
                     _ => unreachable!("Text can only be concatenated"),
                 },
-                _ => unreachable!(),
+                _ => unreachable!("type checker should block this"),
             }
         }
     }

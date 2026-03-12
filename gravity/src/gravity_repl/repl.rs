@@ -1,5 +1,6 @@
 use gravlib::ast::GravityParser;
 use gravlib::error::GravityError;
+use gravlib::eval::eval_expr_nameless;
 use gravlib::{Assignment, GravityState, Rule, Value, ast, typecheck};
 use pest::Parser;
 use reedline_repl_rs::Repl;
@@ -14,14 +15,28 @@ fn print_state(
 }
 
 fn put(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
-    let var = args.get_one::<String>("var").unwrap();
-    let val = context
-        .vars
-        .get(var)
-        .ok_or(gravlib::error::GravityError::UndefinedVariable(
-            var.to_owned(),
-        ))?;
-    Ok(Some(format!("{}", val.to_owned())))
+    let expr = args
+        .get_many::<String>("expr")
+        .unwrap()
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let content = format!("num _output = {};", expr);
+    let pair = GravityParser::parse(Rule::assignment, &content)?
+        .next()
+        .unwrap();
+    let stmt = ast::parse_assignment(pair);
+
+    let new_expr = if let ast::Statement::Assignment { expr, .. } = stmt {
+        expr
+    } else {
+        unreachable!("not assignment: {:#?}", stmt)
+    };
+
+    let val = eval_expr_nameless(&new_expr, context)?;
+
+    Ok(Some(format!("{}", val)))
 }
 
 fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
@@ -132,8 +147,8 @@ pub fn run(name: String) -> Result<(), GravityError> {
         .with_version(&format!("{}", env!("CARGO_PKG_VERSION")))
         .with_command(
             Command::new("put")
-                .about("Print the current value of a variable")
-                .arg(Arg::new("var").required(true)),
+                .about("Evaluate an expression and print the output")
+                .arg(Arg::new("expr").required(true).num_args(1..)),
             put,
         )
         .with_command(
@@ -145,11 +160,7 @@ pub fn run(name: String) -> Result<(), GravityError> {
                         .value_parser(["num", "dec", "text", "bool"]),
                 )
                 .arg(Arg::new("ident").required(true))
-                .arg(
-                    Arg::new("value")
-                        .required(true)
-                        .allow_hyphen_values(true),
-                ),
+                .arg(Arg::new("value").required(true).allow_hyphen_values(true)),
             add,
         )
         .with_command(
@@ -174,11 +185,7 @@ pub fn run(name: String) -> Result<(), GravityError> {
             Command::new("set")
                 .about("Change the value of a variable")
                 .arg(Arg::new("var").required(true))
-                .arg(
-                    Arg::new("value")
-                        .required(true)
-                        .allow_hyphen_values(true),
-                ),
+                .arg(Arg::new("value").required(true).allow_hyphen_values(true)),
             set,
         )
         .with_command(

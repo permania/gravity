@@ -42,6 +42,9 @@ pub enum GravityError {
 
     #[error("pest error: {0}")]
     PestError(#[from] pest::error::Error<crate::Rule>),
+    
+    #[error("Self Reference should only be used inside a relationship")]
+    SelfRef,
 }
 
 pub fn handle_error(r: Result<(), GravityError>) -> ! {
