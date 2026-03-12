@@ -56,6 +56,20 @@ impl std::fmt::Display for Type {
     }
 }
 
+impl TryFrom<&str> for Type {
+    type Error = GravityError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "num" => Ok(Type::Number),
+            "dec" => Ok(Type::Decimal),
+            "bool" => Ok(Type::Bool),
+            "text" => Ok(Type::Text),
+            _ => Err(GravityError::InvalidString),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Program {
     pub slf: Vec<Statement>,

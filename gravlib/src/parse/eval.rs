@@ -76,12 +76,12 @@ pub enum Value {
 
 impl Value {
     pub fn to_type(&self) -> Type {
-	match self {
-	    Self::Number(_) => Type::Number,
-	    Self::Decimal(_) => Type::Decimal,
-	    Self::Text(_) => Type::Text,
-	    Self::Boolean(_) => Type::Bool,
-	}
+        match self {
+            Self::Number(_) => Type::Number,
+            Self::Decimal(_) => Type::Decimal,
+            Self::Text(_) => Type::Text,
+            Self::Boolean(_) => Type::Bool,
+        }
     }
 }
 
@@ -105,7 +105,8 @@ pub fn eval_expr_nameless(expr: &Expr, state: &State) -> Result<Value, GravityEr
         Expr::Ident(n) => Ok(state
             .vars
             .get(n)
-            .ok_or(GravityError::UndefinedVariable(n.to_owned())).cloned()?),
+            .ok_or(GravityError::UndefinedVariable(n.to_owned()))
+            .cloned()?),
         Expr::Negate(e) => Ok(match eval_expr_nameless(e, state)? {
             Value::Number(n) => Value::Number(-n),
             Value::Decimal(d) => Value::Decimal(-d),
@@ -128,7 +129,7 @@ pub fn eval_expr_nameless(expr: &Expr, state: &State) -> Result<Value, GravityEr
             let rhs = eval_expr_nameless(right, state)?;
             let lhs_t = lhs.to_type();
             let rhs_t = rhs.to_type();
-	    match (lhs, rhs) {
+            match (lhs, rhs) {
                 (Value::Number(l), Value::Number(r)) => match op {
                     Op::Add => Ok(Value::Number(l + r)),
                     Op::Sub => Ok(Value::Number(l - r)),
@@ -149,9 +150,9 @@ pub fn eval_expr_nameless(expr: &Expr, state: &State) -> Result<Value, GravityEr
                     Op::Add => Ok(Value::Text(l + &r)),
                     _ => unreachable!("Text can only be concatenated"),
                 },
-                _ => Err(GravityError::TypeMismatch(lhs_t, rhs_t))
+                _ => Err(GravityError::TypeMismatch(lhs_t, rhs_t)),
             }
-        },
+        }
         Expr::SelfRef => Err(GravityError::SelfRef),
     }
 }

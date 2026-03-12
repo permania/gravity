@@ -82,31 +82,60 @@ fn expr_type(expr: &Expr, def: &HashMap<String, Type>, name: &str) -> Result<Typ
     }
 }
 
+pub fn check_assignment(
+    typ: &Type,
+    name: &String,
+    expr: &Expr,
+    def: &mut HashMap<String, Type>,
+) -> Result<(), GravityError> {
+    let expr_t = expr_type(expr, def, name)?;
+
+    if typ.to_owned() != expr_t {
+        return Err(GravityError::AssignmentMismatch(
+            name.to_owned(),
+            typ.to_owned(),
+            expr_t,
+        ));
+    }
+
+    if def.insert(name.clone(), typ.to_owned()).is_some() {
+        return Err(GravityError::Duplication(name.to_owned()));
+    }
+
+    Ok(())
+}
+
+pub fn check_relationship(
+    name: &String,
+    expr: &Expr,
+    def: &mut HashMap<String, Type>,
+) -> Result<(), GravityError> {
+    let typ = match def.get(name) {
+        None => return Err(GravityError::UndefinedVariable(name.to_owned())),
+        Some(t) => t.clone(),
+    };
+    let expr_t = expr_type(expr, def, name)?;
+    if typ != expr_t {
+        return Err(GravityError::AssignmentMismatch(
+            name.to_owned(),
+            typ,
+            expr_t,
+        ));
+    }
+
+    Ok(())
+}
+
 pub fn run(prg: Program) -> Result<(), GravityError> {
     let mut def = HashMap::<String, Type>::new();
 
     for stmt in prg.slf {
         match stmt {
             Statement::Assignment { typ, name, expr } => {
-                let expr_t = expr_type(&expr, &def, &name)?;
-
-                if typ != expr_t {
-                    return Err(GravityError::AssignmentMismatch(name, typ, expr_t));
-                }
-
-                if def.insert(name.clone(), typ).is_some() {
-                    return Err(GravityError::Duplication(name));
-                }
+                check_assignment(&typ, &name, &expr, &mut def)?;
             }
             Statement::Relationship { name, expr } => {
-                let typ = match def.get(&name) {
-                    None => return Err(GravityError::UndefinedVariable(name)),
-                    Some(t) => t.clone(),
-                };
-                let expr_t = expr_type(&expr, &def, &name)?;
-                if typ != expr_t {
-                    return Err(GravityError::AssignmentMismatch(name, typ, expr_t));
-                }
+                check_relationship(&name, &expr, &mut def)?;
             }
         }
     }

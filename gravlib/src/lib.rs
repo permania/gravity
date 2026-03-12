@@ -21,7 +21,7 @@ use serde::de::value;
 pub type GravityState = eval::State;
 
 const DB_EXT: &str = "gravdb";
-const SCM_EXT: &str = "gravscm";
+pub const SCM_EXT: &str = "gravscm";
 const MAGIC: [u8; 9] = [0xff, 0xfe, 0xc0, 0xaa, 0xab, b'g', b'r', b'a', b'v'];
 
 pub fn read_db_state(name: String) -> Result<State, GravityError> {
@@ -83,6 +83,65 @@ pub fn read_db(name: String) -> Result<(), GravityError> {
     let output = postcard::to_allocvec(&db_state)?;
     todo!("pretty reading");
 
+    Ok(())
+}
+
+pub fn dump_db_state(name: String, state: &State) -> Result<(), GravityError> {
+    fn expr_to_string(expr: &Expr) -> String {
+        match expr {
+            Expr::Number(n) => n.to_string(),
+            Expr::Decimal(d) => d.to_string(),
+            Expr::Bool(b) => b.to_string(),
+            Expr::Text(s) => format!("\"{}\"", s),
+            Expr::Ident(n) => n.clone(),
+            Expr::SelfRef => "%".to_string(),
+            Expr::Negate(e) => format!("-{}", expr_to_string(e)),
+            Expr::Factorial(e, n) => format!("{}{}", expr_to_string(e), "!".repeat(*n as usize)),
+            Expr::BinOp(l, op, r) => format!(
+                "({} {} {})",
+                expr_to_string(l),
+                op_to_string(op),
+                expr_to_string(r)
+            ),
+        }
+    }
+
+    fn op_to_string(op: &Op) -> &str {
+        match op {
+            Op::Add => "+",
+            Op::Sub => "-",
+            Op::Mul => "*",
+            Op::Div => "/",
+            Op::Mod => "&",
+            Op::Pow => "^",
+        }
+    }
+
+    fn create_assignment(a: Assignment) -> String {
+        format!("{} {} = {};", a.typ, a.name, expr_to_string(&a.expr))
+    }
+
+    fn create_relationship(name: &str, expr: &Expr) -> String {
+        format!("{} <- {};", name, expr_to_string(expr))
+    }
+
+    let fp = PathBuf::from(&name);
+    let mut lines = Vec::<String>::new();
+    let db_state = state;
+
+    for a in db_state.def.iter() {
+        lines.push(create_assignment(a.to_owned()));
+    }
+
+    for pair in db_state.rel.iter() {
+        for expr in pair.1.iter() {
+            lines.push(create_relationship(&pair.0, expr));
+        }
+    }
+
+    let content = lines.join("\n");
+
+    fs::write(fp.with_extension(SCM_EXT), content)?;
     Ok(())
 }
 
