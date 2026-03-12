@@ -4,7 +4,9 @@ use gravlib::ast::{GravityParser, Type};
 use gravlib::error::GravityError;
 use gravlib::eval::eval_expr_nameless;
 use gravlib::typecheck::expr_type_state;
-use gravlib::{Assignment, GravityState, Rule, Value, ast, dump_db, dump_db_state, typecheck};
+use gravlib::{
+    Assignment, GravityState, Rule, Value, ast, dump_db, dump_db_state, expr_to_string, typecheck,
+};
 use pest::Parser;
 use reedline_repl_rs::Repl;
 use reedline_repl_rs::clap::{Arg, ArgMatches, Command};
@@ -23,7 +25,7 @@ fn write_db(args: ArgMatches, context: &mut GravityState) -> Result<Option<Strin
 
     Ok(Some(format!(
         "Wrote {}",
-        path.to_owned() + gravlib::SCM_EXT
+        path.to_owned() + "." + gravlib::SCM_EXT
     )))
 }
 
@@ -136,6 +138,28 @@ fn relate(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>
     Ok(None)
 }
 
+fn unrelate(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
+    todo!("derelate");
+    Ok(None)
+}
+
+fn relates(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
+    let ident = args.get_one::<String>("var").unwrap();
+
+    if !context.def.iter().any(|d| d.name == *ident) {
+        return Err(GravityError::UndefinedVariable(ident.to_owned()));
+    }
+
+    let var_def = context.rel.get(ident).cloned().map(|v| {
+        v.iter()
+            .map(|e| expr_to_string(e))
+            .collect::<Vec<_>>()
+            .join("\n")
+    });
+
+    Ok(var_def)
+}
+
 fn set(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
     let ident = args.get_one::<String>("var").unwrap();
     let val_str = args.get_one::<String>("value").unwrap();
@@ -218,6 +242,24 @@ pub fn run(name: String) -> Result<(), GravityError> {
                         .allow_hyphen_values(true),
                 ),
             relate,
+        )
+        .with_command(
+            Command::new("derel")
+                .about("Remove an existing relationship")
+                .arg(Arg::new("var").required(true))
+                .arg(
+                    Arg::new("expr")
+                        .required(true)
+                        .num_args(1..)
+                        .allow_hyphen_values(true),
+                ),
+            unrelate,
+        )
+        .with_command(
+            Command::new("rels")
+                .about("Print a variable's relationships")
+                .arg(Arg::new("var").required(true)),
+            relates,
         )
         .with_command(
             Command::new("set")
