@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use super::ast::{Expr, Program, Statement, Type};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Assignment {
     pub typ: Type,
     pub name: String,
@@ -151,13 +151,11 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
 
     for stmt in prg.slf {
         match stmt {
-            Statement::Assignment { name, expr, typ } => {
-                state.def.push(Assignment {
-                    name: name.clone(),
-                    expr: expr,
-                    typ: typ,
-                })
-            }
+            Statement::Assignment { name, expr, typ } => state.def.push(Assignment {
+                name: name.clone(),
+                expr: expr,
+                typ: typ,
+            }),
             Statement::Relationship { name, expr } => {
                 state
                     .rel

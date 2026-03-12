@@ -3,7 +3,7 @@ use std::{io, process};
 use reedline_repl_rs::reedline;
 use thiserror::Error;
 
-use crate::{parse::ast::Type};
+use crate::parse::ast::Type;
 
 #[derive(Debug, Error)]
 pub enum GravityError {
