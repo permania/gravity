@@ -20,7 +20,6 @@ fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
     let typ = args.get_one::<String>("type").unwrap();
     let ident = args.get_one::<String>("ident").unwrap();
     let val_str = args.get_one::<String>("value").unwrap();
-
     let value = match typ.as_str() {
         "num" => val_str
             .parse::<i64>()
@@ -38,7 +37,6 @@ fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
         "text" => Value::Text(val_str.clone()),
         _ => unreachable!(),
     };
-
     let content = format!("{} {} = {};", typ, ident, value);
     let program = ast::parse_program(content);
     let stmt = program.slf.into_iter().next().unwrap();
@@ -47,6 +45,14 @@ fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
 	return Err(GravityError::Duplication(ident.to_owned()));
     }
     context.def.push(Assignment::from(stmt));
+
+    Ok(None)
+}
+
+fn remove(arg: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
+    let ident = arg.get_one::<String>("var").unwrap();
+    context.def.retain(|d| d.name != *ident);
+    context.rel.shift_remove(ident);
 
     Ok(None)
 }
@@ -74,6 +80,12 @@ pub fn run(name: String) -> Result<(), GravityError> {
                 .arg(Arg::new("ident").required(true))
                 .arg(Arg::new("value").required(true)),
             add,
+        )
+        .with_command(
+            Command::new("remove")
+                .about("Remove a variable from the database")
+                .arg(Arg::new("var").required(true)),
+            remove,
         )
         .without_clock()
         .with_prompt(&Paint::white("gravity ").to_string())
