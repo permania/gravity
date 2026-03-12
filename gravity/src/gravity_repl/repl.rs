@@ -89,8 +89,8 @@ fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
 
 fn remove(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
     let ident = args.get_one::<String>("var").unwrap();
-    context.def.retain(|d| d.name != *ident);
-    context.rel.shift_remove(ident);
+    context.def.retain(|d| &d.name != ident);
+    context.rel.retain(|d| &d.0 != ident);
 
     Ok(None)
 }
@@ -129,17 +129,31 @@ fn relate(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>
 
     typecheck::check_relationship(ident, &expr, &mut defined)?;
 
-    context
-        .rel
-        .entry(ident.to_owned())
-        .or_insert_with(Vec::new)
-        .push(expr);
+    context.rel.push((ident.clone(), expr));
 
     Ok(None)
 }
 
 fn unrelate(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
-    todo!("derelate");
+    let ident = args.get_one::<String>("var").unwrap();
+
+    if !context.def.iter().any(|d| d.name == *ident) {
+        return Err(GravityError::UndefinedVariable(ident.to_owned()));
+    }
+
+    let expr = format!(
+        "({})",
+        args.get_many::<String>("expr")
+            .unwrap()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+
+    context
+        .rel
+        .retain(|p| !(&p.0 == ident && expr_to_string(&p.1) == expr));
+
     Ok(None)
 }
 
@@ -150,14 +164,17 @@ fn relates(args: ArgMatches, context: &mut GravityState) -> Result<Option<String
         return Err(GravityError::UndefinedVariable(ident.to_owned()));
     }
 
-    let var_def = context.rel.get(ident).cloned().map(|v| {
-        v.iter()
-            .map(|e| expr_to_string(e))
-            .collect::<Vec<_>>()
-            .join("\n")
-    });
+    let var_def = context
+        .rel
+        .iter()
+        .filter(|(name, _)| name == ident)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|p| expr_to_string(&p.1))
+        .collect::<Vec<_>>()
+        .join("\n");
 
-    Ok(var_def)
+    Ok(Some(var_def))
 }
 
 fn set(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {

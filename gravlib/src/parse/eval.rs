@@ -27,7 +27,7 @@ impl From<Statement> for Assignment {
 pub struct State {
     pub vars: IndexMap<String, Value>,
     pub def: Vec<Assignment>,
-    pub rel: IndexMap<String, Vec<Expr>>,
+    pub rel: Vec<(String, Expr)>,
 }
 
 impl Default for State {
@@ -45,7 +45,7 @@ impl State {
         Self {
             vars: IndexMap::<String, Value>::new(),
             def: Vec::<Assignment>::new(),
-            rel: IndexMap::<String, Vec<Expr>>::new(),
+            rel: Vec::<(String, Expr)>::new(),
         }
     }
 
@@ -55,13 +55,9 @@ impl State {
             let base = eval_expr(&v.expr, self, &v.name);
             self.vars.insert(v.name.clone(), base);
         }
-        for v in self.def.iter() {
-            if let Some(exprs) = self.rel.get(&v.name) {
-                for expr in exprs {
-                    let val = eval_expr(expr, self, &v.name);
-                    self.vars.insert(v.name.clone(), val);
-                }
-            }
+        for (name, expr) in self.rel.iter() {
+            let val = eval_expr(expr, self, name);
+            self.vars.insert(name.clone(), val);
         }
     }
 }
@@ -230,16 +226,11 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
                 typ: typ,
             }),
             Statement::Relationship { name, expr } => {
-                state
-                    .rel
-                    .entry(name.clone())
-                    .or_insert_with(|| Vec::new())
-                    .push(expr.clone());
+                state.rel.push((name.clone(), expr));
             }
         };
     }
     state.compute();
-    println!("{:#?}", state);
 
     Ok(state)
 }

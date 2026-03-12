@@ -134,9 +134,8 @@ pub fn dump_db_state(name: String, state: &State) -> Result<(), GravityError> {
     }
 
     for pair in db_state.rel.iter() {
-        for expr in pair.1.iter() {
-            lines.push(create_relationship(&pair.0, expr));
-        }
+	let (name, expr) = &pair;
+        lines.push(create_relationship(name, expr));
     }
 
     let content = lines.join("\n");
@@ -155,9 +154,8 @@ pub fn dump_db(name: String) -> Result<(), GravityError> {
     }
 
     for pair in db_state.rel.into_iter() {
-        for expr in pair.1.iter() {
-            lines.push(create_relationship(&pair.0, expr));
-        }
+	let (name, expr) = &pair;
+        lines.push(create_relationship(name, expr));
     }
 
     let content = lines.join("\n");

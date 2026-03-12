@@ -14,7 +14,7 @@ pub enum Statement {
     Relationship { name: String, expr: Expr },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Expr {
     Number(i64),
     Decimal(f64),
@@ -27,7 +27,7 @@ pub enum Expr {
     BinOp(Box<Expr>, Op, Box<Expr>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Op {
     Add,
     Sub,
