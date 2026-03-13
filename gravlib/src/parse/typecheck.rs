@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
-use crate::{State, error::GravityError};
+use pest::Span;
 
-use super::ast::{Expr, Program, Statement, Type};
+use crate::{State, ast::RecField, error::GravityError};
+
+use super::ast::{Expr, Program, RecDef, Statement, Type};
 
 pub fn expr_type_state(expr: &Expr, state: &State) -> Result<Type, GravityError> {
     match expr {
@@ -128,6 +130,7 @@ pub fn check_relationship(
 
 pub fn run(prg: Program) -> Result<(), GravityError> {
     let mut def = HashMap::<String, Type>::new();
+    let mut def_rec = Vec::<String>::new();
 
     for stmt in prg.slf {
         match stmt {
@@ -140,5 +143,43 @@ pub fn run(prg: Program) -> Result<(), GravityError> {
         }
     }
 
+    for recd in prg.rec {
+        check_record_def(recd, &mut def_rec)?;
+    }
+
+    Ok(())
+}
+
+fn check_record_def(recd: RecDef, def: &mut Vec<String>) -> Result<(), GravityError> {
+    if def.contains(&recd.name) {
+        return Err(GravityError::Duplication(recd.name));
+    }
+
+    let mut field_names = Vec::new();
+    let mut key_count = 0;
+
+    for field in recd.fields.iter() {
+        if field.is_key {
+            if key_count == 1 {
+                return Err(GravityError::MultipleKeys(recd.name.clone()));
+            }
+            if matches!(field.typ, Type::Bool | Type::Decimal) {
+                return Err(GravityError::WrongKey(recd.name.clone()));
+            }
+
+            key_count += 1;
+        }
+
+        if field_names.contains(&field.name) {
+            return Err(GravityError::Duplication(field.name.to_owned()));
+        }
+        field_names.push(field.name.clone())
+    }
+
+    if key_count == 0 {
+        return Err(GravityError::MissingKey(recd.name.clone()));
+    }
+
+    def.push(recd.name);
     Ok(())
 }

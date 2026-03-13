@@ -70,13 +70,28 @@ impl TryFrom<&str> for Type {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecField {
+    pub typ: Type,
+    pub name: String,
+    pub is_key: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecDef {
+    pub name: String,
+    pub fields: Vec<RecField>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Program {
     pub slf: Vec<Statement>,
+    pub rec: Vec<RecDef>,
 }
 
 pub fn parse_program(contents: String) -> Program {
     let mut stmts = Vec::<Statement>::new();
+    let mut recs = Vec::<RecDef>::new();
 
     let pairs = GravityParser::parse(Rule::program, &contents).expect("parse failed");
 
@@ -93,6 +108,10 @@ pub fn parse_program(contents: String) -> Program {
                             let result = parse_relationship(inner);
                             stmts.push(result);
                         }
+                        Rule::rec_def => {
+                            let result = parse_record(inner);
+                            recs.push(result);
+                        }
                         _ => continue,
                     }
                 }
@@ -100,7 +119,10 @@ pub fn parse_program(contents: String) -> Program {
         }
     }
 
-    Program { slf: stmts }
+    Program {
+        slf: stmts,
+        rec: recs,
+    }
 }
 
 fn parse_expr(pair: Pair<Rule>) -> Expr {
@@ -173,30 +195,60 @@ fn parse_expr(pair: Pair<Rule>) -> Expr {
 
 pub fn parse_assignment(pair: Pair<Rule>) -> Statement {
     let mut inner = pair.into_inner();
-    let vtype = match inner.next().unwrap().as_str() {
+    let typ = match inner.next().unwrap().as_str() {
         "num" => Type::Number,
         "dec" => Type::Decimal,
         "bool" => Type::Bool,
         "text" => Type::Text,
         _ => unreachable!(),
     };
-    let vname = inner.next().unwrap().as_str().to_string();
-    let vvalue = parse_expr(inner.next().unwrap());
+    let ident = inner.next().unwrap().as_str().to_string();
+    let val = parse_expr(inner.next().unwrap());
 
     Statement::Assignment {
-        typ: vtype,
-        name: vname,
-        expr: vvalue,
+        typ,
+        name: ident,
+        expr: val,
     }
 }
 
 pub fn parse_relationship(pair: Pair<Rule>) -> Statement {
     let mut inner = pair.into_inner();
-    let vname = inner.next().unwrap().as_str().to_string();
-    let vvalue = parse_expr(inner.next().unwrap());
+    let ident = inner.next().unwrap().as_str().to_string();
+    let val = parse_expr(inner.next().unwrap());
 
     Statement::Relationship {
-        name: vname,
-        expr: vvalue,
+        name: ident,
+        expr: val,
+    }
+}
+
+pub fn parse_record(pair: Pair<Rule>) -> RecDef {
+    let mut fields: Vec<RecField> = Vec::new();
+
+    let mut inner = pair.into_inner();
+    let ident = inner.next().unwrap().as_str();
+
+    for field in inner {
+        for thing in field.into_inner() {
+            let self_rule = thing.as_rule();
+	    let is_key = self_rule == Rule::rec_key_field;
+            let mut new_in = thing.into_inner();
+            let typ = match new_in.next().unwrap().as_str() {
+                "num" => Type::Number,
+                "dec" => Type::Decimal,
+                "bool" => Type::Bool,
+                "text" => Type::Text,
+                _ => unreachable!(),
+            };
+            let field_ident = new_in.next().unwrap().as_str();
+            let name = field_ident.to_owned();
+            fields.push(RecField { typ, name, is_key })
+        }
+    }
+
+    RecDef {
+        name: ident.to_owned(),
+        fields,
     }
 }

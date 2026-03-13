@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use reedline_repl_rs::reedline::UndoBehavior;
 use serde::{Deserialize, Serialize};
 
-use super::ast::{Expr, Program, Statement, Type};
+use super::ast::{Expr, Program, RecDef, Statement, Type};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Assignment {
@@ -28,6 +28,13 @@ pub struct State {
     pub vars: IndexMap<String, Value>,
     pub def: Vec<Assignment>,
     pub rel: Vec<(String, Expr)>,
+    pub recs: Vec<Record>
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Record {
+    pub schema: RecDef,
+    pub rows: IndexMap<String, IndexMap<String, Value>>,
 }
 
 impl Default for State {
@@ -36,6 +43,7 @@ impl Default for State {
             vars: Default::default(),
             def: Default::default(),
             rel: Default::default(),
+            recs: Default::default(),
         }
     }
 }
@@ -46,6 +54,7 @@ impl State {
             vars: IndexMap::<String, Value>::new(),
             def: Vec::<Assignment>::new(),
             rel: Vec::<(String, Expr)>::new(),
+            recs: Vec::<Record>::new(),
         }
     }
 

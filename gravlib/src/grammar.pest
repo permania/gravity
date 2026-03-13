@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
 COMMENT    = _{ "@" ~ (!"\n" ~ ANY)* }
 
-keyword = @{ ("num" | "dec" | "bool" | "text" | "true" | "false") ~ !(ASCII_ALPHANUMERIC | "_") }
+keyword = @{ ("num" | "dec" | "bool" | "text" | "true" | "false" | "rec" | "key") ~ !(ASCII_ALPHANUMERIC | "_") }
 
 type_base  =  { "num" | "dec" | "bool" | "text" }
 bool_lit   =  { "true" | "false" }
@@ -24,9 +24,14 @@ add_op    = { "+" | "-" }
 sum       = { product ~ (add_op ~ product)* }
 expr      = { sum }
 
+rec_key_field  = { "key" ~ type_base ~ identifier ~ ";" }
+rec_val_field  = { type_base ~ identifier ~ ";" }
+rec_field      = { rec_key_field | rec_val_field }
+rec_def        = { "rec" ~ identifier ~ "{" ~ rec_field+ ~ "}" ~ ";" }
+
 assignment   = { type_base ~ identifier ~ "=" ~ expr ~ ";" }
 declaration  = { type_base ~ identifier ~ ";" }
 relationship = { identifier ~ "<-" ~ expr ~ ";" }
 
-statement = { assignment | relationship | declaration }
+statement = { assignment | relationship | declaration | rec_def }
 program   = { SOI ~ statement* ~ EOI }

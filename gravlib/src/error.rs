@@ -48,6 +48,15 @@ pub enum GravityError {
 
     #[error("Self Reference should only be used inside a relationship")]
     SelfRef,
+
+    #[error("Record definition contains no primary key: {0}")]
+    MissingKey(String),
+
+    #[error("Record definition contains multiple primary keys: {0}")]
+    MultipleKeys(String),
+
+    #[error("A variable of type bool can not be primary key: {0}")]
+    WrongKey(String),
 }
 
 pub fn handle_error(r: Result<(), GravityError>) -> ! {
