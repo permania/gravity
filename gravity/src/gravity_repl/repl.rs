@@ -57,7 +57,12 @@ fn put(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
 fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
     let typ = args.get_one::<String>("type").unwrap();
     let ident = args.get_one::<String>("ident").unwrap();
-    let val_str = args.get_one::<String>("value").unwrap();
+    let val_str = args
+        .get_many::<String>("value")
+        .unwrap()
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ");
     let content = format!("{} {} = {};", typ, ident, val_str);
     let pair = GravityParser::parse(Rule::assignment, &content)?
         .next()
@@ -179,7 +184,12 @@ fn relates(args: ArgMatches, context: &mut GravityState) -> Result<Option<String
 
 fn set(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
     let ident = args.get_one::<String>("var").unwrap();
-    let val_str = args.get_one::<String>("value").unwrap();
+    let val_str = args
+        .get_many::<String>("value")
+        .unwrap()
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" ");
 
     if !context.def.iter().any(|d| d.name == *ident) {
         return Err(GravityError::UndefinedVariable(ident.to_owned()));
@@ -239,7 +249,12 @@ pub fn run(name: String) -> Result<(), GravityError> {
                         .value_parser(["num", "dec", "text", "bool"]),
                 )
                 .arg(Arg::new("ident").required(true))
-                .arg(Arg::new("value").required(true).allow_hyphen_values(true)),
+                .arg(
+                    Arg::new("value")
+                        .required(true)
+                        .allow_hyphen_values(true)
+                        .num_args(1..),
+                ),
             add,
         )
         .with_command(
@@ -282,7 +297,12 @@ pub fn run(name: String) -> Result<(), GravityError> {
             Command::new("set")
                 .about("Change the value of a variable")
                 .arg(Arg::new("var").required(true))
-                .arg(Arg::new("value").required(true).allow_hyphen_values(true)),
+                .arg(
+                    Arg::new("value")
+                        .required(true)
+                        .allow_hyphen_values(true)
+                        .num_args(1..),
+                ),
             set,
         )
         .with_command(
