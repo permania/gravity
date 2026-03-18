@@ -55,6 +55,12 @@ pub enum GravityError {
     #[error("Record definition contains multiple primary keys: {0}")]
     MultipleKeys(String),
 
+    #[error("Wrong number of fields for insertion into {0}: expected {1}, got {2}")]
+    WrongInsertionCount(String, usize, usize),
+
+    #[error("Type mismatch in insertion into {0} field {1}: expected {2}, got {3}")]
+    WrongInsertionType(String, String, Type, Type),
+
     #[error("A variable of type bool can not be primary key: {0}")]
     WrongKey(String),
 }

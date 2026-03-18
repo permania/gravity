@@ -1,8 +1,5 @@
-use std::{any::Any, default};
-
-use crate::{error::GravityError, parse::ast::Op};
+use crate::{ast::RecField, error::GravityError, parse::ast::Op};
 use indexmap::IndexMap;
-use reedline_repl_rs::reedline::UndoBehavior;
 use serde::{Deserialize, Serialize};
 
 use super::ast::{Expr, Program, RecDef, Statement, Type};
@@ -28,7 +25,7 @@ pub struct State {
     pub vars: IndexMap<String, Value>,
     pub def: Vec<Assignment>,
     pub rel: Vec<(String, Expr)>,
-    pub recs: Vec<Record>
+    pub recs: Vec<Record>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -227,6 +224,13 @@ fn eval_expr(expr: &Expr, state: &State, name: &str) -> Value {
 pub fn eval_program(prg: Program) -> Result<State, GravityError> {
     let mut state = State::new();
 
+    for rec in prg.rec {
+        state.recs.push(Record {
+            schema: rec,
+            rows: Default::default(),
+        })
+    }
+
     for stmt in prg.slf {
         match stmt {
             Statement::Assignment { name, expr, typ } => state.def.push(Assignment {
@@ -236,6 +240,32 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
             }),
             Statement::Relationship { name, expr } => {
                 state.rel.push((name.clone(), expr));
+            }
+            Statement::Insertion { target, exprs } => {
+                let mut vals = Vec::<Value>::new();
+                for e in exprs {
+                    vals.push(eval_expr_nameless(&e, &state)?);
+                }
+
+                let found = state.recs.iter_mut().find(|r| r.schema.name == target).unwrap();
+
+                let pairs = vals
+                    .into_iter()
+                    .zip(found.schema.fields.clone().into_iter())
+                    .collect::<Vec<(Value, RecField)>>();
+
+                let key = pairs.iter().find(|(_, f)| f.is_key).unwrap().0.to_string();
+
+                let ktv = pairs
+                    .into_iter()
+                    .map(|(v, f)| (f.name, v))
+                    .collect::<IndexMap<String, Value>>();
+
+		if found.rows.contains_key(&key) {
+		    return Err(GravityError::Duplication(key))
+		}
+
+                found.rows.insert(key, ktv);
             }
         };
     }

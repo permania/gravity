@@ -28,10 +28,12 @@ rec_key_field  = { "key" ~ type_base ~ identifier ~ ";" }
 rec_val_field  = { type_base ~ identifier ~ ";" }
 rec_field      = { rec_key_field | rec_val_field }
 rec_def        = { "rec" ~ identifier ~ "{" ~ rec_field+ ~ "}" ~ ";" }
+rec_entry  = { "{" ~ expr ~ ("," ~ expr)* ~ "}" }
 
 assignment   = { type_base ~ identifier ~ "=" ~ expr ~ ";" }
 declaration  = { type_base ~ identifier ~ ";" }
 relationship = { identifier ~ "<-" ~ expr ~ ";" }
+insertion = { identifier ~ "<<" ~ rec_entry ~ ";" }
 
-statement = { assignment | relationship | declaration | rec_def }
+statement = { assignment | relationship | declaration | rec_def | insertion }
 program   = { SOI ~ statement* ~ EOI }

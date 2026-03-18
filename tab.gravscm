@@ -1,1 +1,2 @@
-rec ppl { key text name; num points; bool present; };
+rec items { key num id; text name; dec price; dec discount; };
+items << { 0, "orange", 1.00, 0.1};

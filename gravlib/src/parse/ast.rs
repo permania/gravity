@@ -12,6 +12,7 @@ pub struct GravityParser;
 pub enum Statement {
     Assignment { typ: Type, name: String, expr: Expr },
     Relationship { name: String, expr: Expr },
+    Insertion { target: String, exprs: Vec<Expr> },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -111,6 +112,10 @@ pub fn parse_program(contents: String) -> Program {
                         Rule::rec_def => {
                             let result = parse_record(inner);
                             recs.push(result);
+                        }
+                        Rule::insertion => {
+                            let result = parse_insertion(inner);
+                            stmts.push(result);
                         }
                         _ => continue,
                     }
@@ -223,6 +228,21 @@ pub fn parse_relationship(pair: Pair<Rule>) -> Statement {
     }
 }
 
+pub fn parse_insertion(pair: Pair<Rule>) -> Statement {
+    let mut inner = pair.into_inner();
+    let target = inner.next().unwrap().as_str();
+    let rest = inner.next().unwrap().into_inner();
+    let mut inputs: Vec<Expr> = Vec::new();
+    for pair in rest.into_iter() {
+        inputs.push(parse_expr(pair));
+    }
+
+    Statement::Insertion {
+        target: target.to_owned(),
+        exprs: inputs,
+    }
+}
+
 pub fn parse_record(pair: Pair<Rule>) -> RecDef {
     let mut fields: Vec<RecField> = Vec::new();
 
@@ -232,7 +252,7 @@ pub fn parse_record(pair: Pair<Rule>) -> RecDef {
     for field in inner {
         for thing in field.into_inner() {
             let self_rule = thing.as_rule();
-	    let is_key = self_rule == Rule::rec_key_field;
+            let is_key = self_rule == Rule::rec_key_field;
             let mut new_in = thing.into_inner();
             let typ = match new_in.next().unwrap().as_str() {
                 "num" => Type::Number,
