@@ -55,6 +55,9 @@ pub enum GravityError {
     #[error("Record definition contains multiple primary keys: {0}")]
     MultipleKeys(String),
 
+    #[error("The key field is immutable: {0}")]
+    ImmutableKey(String),
+
     #[error("Wrong number of fields for insertion into {0}: expected {1}, got {2}")]
     WrongInsertionCount(String, usize, usize),
 

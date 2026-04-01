@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{State, ast::RecField, error::GravityError};
 
-use super::ast::{Expr, Program, RecDef, Statement, Type};
+use super::ast::{Expr, Program, RecDef, RelTarget, Statement, Type};
 
 pub fn expr_type_state(expr: &Expr, state: &State) -> Result<Type, GravityError> {
     match expr {
@@ -43,7 +43,12 @@ pub fn expr_type_state(expr: &Expr, state: &State) -> Result<Type, GravityError>
     }
 }
 
-fn expr_type(expr: &Expr, def: &HashMap<String, Type>, name: &str) -> Result<Type, GravityError> {
+fn expr_type(
+    expr: &Expr,
+    def: &HashMap<String, Type>,
+    recs: &mut Vec<RecDef>,
+    name: &str,
+) -> Result<Type, GravityError> {
     match expr {
         Expr::Number(_) => Ok(Type::Number),
         Expr::Decimal(_) => Ok(Type::Decimal),
@@ -54,8 +59,8 @@ fn expr_type(expr: &Expr, def: &HashMap<String, Type>, name: &str) -> Result<Typ
             .cloned()
             .ok_or(GravityError::UndefinedVariable(n.clone())),
         Expr::BinOp(lhs, _, rhs) => {
-            let l = expr_type(lhs, def, name)?;
-            let r = expr_type(rhs, def, name)?;
+            let l = expr_type(lhs, def, recs, name)?;
+            let r = expr_type(rhs, def, recs, name)?;
             if l == r {
                 return Ok(l);
             }
@@ -66,18 +71,31 @@ fn expr_type(expr: &Expr, def: &HashMap<String, Type>, name: &str) -> Result<Typ
             .cloned()
             .ok_or(GravityError::UndefinedVariable(name.to_string())),
         Expr::Negate(inner) => {
-            let expr_t = expr_type(inner, def, name)?;
+            let expr_t = expr_type(inner, def, recs, name)?;
             match expr_t {
                 Type::Number | Type::Decimal => Ok(expr_t),
                 _ => Err(GravityError::InvalidNegation(expr_t)),
             }
         }
         Expr::Factorial(inner, _) => {
-            let expr_t = expr_type(inner, def, name)?;
+            let expr_t = expr_type(inner, def, recs, name)?;
             match expr_t {
                 Type::Number => Ok(expr_t),
                 _ => Err(GravityError::InvalidFactorial(expr_t)),
             }
+        }
+        Expr::RecIndex { name, key, field } => {
+            let rec = recs
+                .iter()
+                .find(|r| &r.name == name)
+                .ok_or(GravityError::UndefinedVariable(name.to_owned()))?;
+
+            let field_def = rec
+                .fields
+                .iter()
+                .find(|f| &f.name == field)
+                .ok_or(GravityError::UndefinedVariable(field.to_owned()))?;
+            Ok(field_def.typ.clone())
         }
     }
 }
@@ -114,7 +132,7 @@ fn expr_type_insertion(expr: &Expr, def: &HashMap<String, Type>) -> Result<Type,
                 _ => Err(GravityError::InvalidFactorial(expr_t)),
             }
         }
-        _ => Err(GravityError::SelfRef)
+        _ => Err(GravityError::SelfRef),
     }
 }
 
@@ -123,8 +141,9 @@ pub fn check_assignment(
     name: &String,
     expr: &Expr,
     def: &mut HashMap<String, Type>,
+    recs: &mut Vec<RecDef>,
 ) -> Result<(), GravityError> {
-    let expr_t = expr_type(expr, def, name)?;
+    let expr_t = expr_type(expr, def, recs, name)?;
 
     if typ.to_owned() != expr_t {
         return Err(GravityError::AssignmentMismatch(
@@ -142,22 +161,52 @@ pub fn check_assignment(
 }
 
 pub fn check_relationship(
-    name: &String,
+    target: &RelTarget,
     expr: &Expr,
     def: &mut HashMap<String, Type>,
+    recs: &mut Vec<RecDef>,
 ) -> Result<(), GravityError> {
-    let typ = match def.get(name) {
-        None => return Err(GravityError::UndefinedVariable(name.to_owned())),
-        Some(t) => t.clone(),
+    match target {
+        RelTarget::Var(name) => {
+            let typ = match def.get(name) {
+                None => return Err(GravityError::UndefinedVariable(name.to_owned())),
+                Some(t) => t.clone(),
+            };
+            let expr_t = expr_type(expr, def, recs, name)?;
+            if typ != expr_t {
+                return Err(GravityError::AssignmentMismatch(
+                    name.to_owned(),
+                    typ,
+                    expr_t,
+                ));
+            }
+        }
+        RelTarget::RecField { name, key, field } => {
+            let rec_def = match recs.iter().find(|d| d.name == *name) {
+                None => return Err(GravityError::UndefinedVariable(name.to_owned())),
+                Some(t) => t.clone(),
+            };
+
+            if !rec_def.fields.iter().any(|f| f.name == *field) {
+                return Err(GravityError::UndefinedVariable(name.to_owned()));
+            }
+
+            if rec_def.fields.iter().any(|f| f.is_key && f.name == *field) {
+                return Err(GravityError::ImmutableKey(name.to_owned()));
+            }
+
+            let rec_field = rec_def.fields.iter().find(|f| &f.name == field).unwrap();
+            let field_t = rec_field.typ.clone();
+
+            def.insert(field.clone(), field_t.clone());
+            let expr_t = expr_type(expr, def, recs, field)?;
+            def.remove(field);
+
+            if field_t != expr_t {
+                return Err(GravityError::TypeMismatch(expr_t, field_t));
+            }
+        }
     };
-    let expr_t = expr_type(expr, def, name)?;
-    if typ != expr_t {
-        return Err(GravityError::AssignmentMismatch(
-            name.to_owned(),
-            typ,
-            expr_t,
-        ));
-    }
 
     Ok(())
 }
@@ -166,7 +215,7 @@ pub fn check_insertion(
     target: &String,
     exprs: &Vec<Expr>,
     def: &mut Vec<RecDef>,
-    vars: &HashMap<String, Type>
+    vars: &HashMap<String, Type>,
 ) -> Result<(), GravityError> {
     if !def.iter().any(|r| r.name == *target) {
         return Err(GravityError::UndefinedVariable(target.to_owned()));
@@ -208,10 +257,10 @@ pub fn run(prg: Program) -> Result<(), GravityError> {
     for stmt in prg.slf {
         match stmt {
             Statement::Assignment { typ, name, expr } => {
-                check_assignment(&typ, &name, &expr, &mut def)?;
+                check_assignment(&typ, &name, &expr, &mut def, &mut def_rec)?;
             }
-            Statement::Relationship { name, expr } => {
-                check_relationship(&name, &expr, &mut def)?;
+            Statement::Relationship { target, expr } => {
+                check_relationship(&target, &expr, &mut def, &mut def_rec)?;
             }
             Statement::Insertion { target, exprs } => {
                 check_insertion(&target, &exprs, &mut def_rec, &def)?;

@@ -1,39 +1,42 @@
-WHITESPACE = _{ " " | "\t" | "\n" | "\r" }
-COMMENT    = _{ "@" ~ (!"\n" ~ ANY)* }
+WHITESPACE	= _{ " " | "\t" | "\n" | "\r" }
+COMMENT		= _{ "@" ~ (!"\n" ~ ANY)* }
 
-keyword = @{ ("num" | "dec" | "bool" | "text" | "true" | "false" | "rec" | "key") ~ !(ASCII_ALPHANUMERIC | "_") }
+keyword		= @{ ("num" | "dec" | "bool" | "text" | "true" | "false" | "rec" | "key") ~ !(ASCII_ALPHANUMERIC | "_") }
 
-type_base  =  { "num" | "dec" | "bool" | "text" }
-bool_lit   =  { "true" | "false" }
-integer    = @{ ASCII_DIGIT+ }
-decimal    = @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
-number     =  { decimal | integer }
-string     = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
-self_ref   =  { "%" }
-identifier = @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+type_base	=  { "num" | "dec" | "bool" | "text" }
+bool_lit	=  { "true" | "false" }
+integer		= @{ ASCII_DIGIT+ }
+decimal		= @{ ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT+ }
+number		=  { decimal | integer }
+string		= @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+self_ref	=  { "%" }
+identifier	= @{ !keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
-unary     = { "-" ~ atom }
-atom      = { unary | number | bool_lit | string | self_ref | identifier | "(" ~ expr ~ ")" }
-bang      = { "!" }
-factorial = { atom ~ bang+ }
-postfix   = { factorial | atom }
-power     = { postfix ~ ("^" ~ power)? }
-mul_op    = { "*" | "/" | "&" }
-product   = { power ~ (mul_op ~ power)* }
-add_op    = { "+" | "-" }
-sum       = { product ~ (add_op ~ product)* }
-expr      = { sum }
+unary		= { "-" ~ atom }
+atom		= { unary | number | bool_lit | string | self_ref | rec_index | identifier | "(" ~ expr ~ ")" }
+bang		= { "!" }
+factorial	= { atom ~ bang+ }
+postfix		= { factorial | atom }
+power		= { postfix ~ ("^" ~ power)? }
+mul_op		= { "*" | "/" | "&" }
+product		= { power ~ (mul_op ~ power)* }
+add_op		= { "+" | "-" }
+sum		= { product ~ (add_op ~ product)* }
+expr		= { sum }
 
-rec_key_field  = { "key" ~ type_base ~ identifier ~ ";" }
-rec_val_field  = { type_base ~ identifier ~ ";" }
-rec_field      = { rec_key_field | rec_val_field }
-rec_def        = { "rec" ~ identifier ~ "{" ~ rec_field+ ~ "}" ~ ";" }
-rec_entry  = { "{" ~ expr ~ ("," ~ expr)* ~ "}" }
+rec_key_field	= { "key" ~ type_base ~ identifier ~ ";" }
+rec_val_field	= { type_base ~ identifier ~ ";" }
+rec_field	= { rec_key_field | rec_val_field }
+rec_def		= { "rec" ~ identifier ~ "{" ~ rec_field+ ~ "}" ~ ";" }
+rec_entry	= { "{" ~ expr ~ ("," ~ expr)* ~ "}" }
 
-assignment   = { type_base ~ identifier ~ "=" ~ expr ~ ";" }
-declaration  = { type_base ~ identifier ~ ";" }
-relationship = { identifier ~ "<-" ~ expr ~ ";" }
-insertion = { identifier ~ "<<" ~ rec_entry ~ ";" }
+rec_index	= { identifier ~ "{" ~ expr ~ "}" ~ "{" ~ identifier ~ "}" }
 
-statement = { assignment | relationship | declaration | rec_def | insertion }
-program   = { SOI ~ statement* ~ EOI }
+assignment	= { type_base ~ identifier ~ "=" ~ expr ~ ";" }
+declaration	= { type_base ~ identifier ~ ";" }
+rel_target	= { rec_index | identifier }
+relationship	= { rel_target ~ "<-" ~ expr ~ ";" }
+insertion	= { identifier ~ "<<" ~ rec_entry ~ ";" }
+
+statement	= { assignment | relationship | declaration | rec_def | insertion }
+program		= { SOI ~ statement* ~ EOI }

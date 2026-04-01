@@ -10,6 +10,7 @@ use error::GravityError;
 
 mod parse;
 use indexmap::IndexMap;
+use parse::ast::RelTarget;
 pub use parse::{
     ast::{self, Expr, Op, Rule},
     eval::{self, Assignment, State, Value},
@@ -102,6 +103,7 @@ pub fn expr_to_string(expr: &Expr) -> String {
             op_to_string(op),
             expr_to_string(r)
         ),
+        Expr::RecIndex { name, key, field } => todo!(),
     }
 }
 
@@ -134,7 +136,11 @@ pub fn dump_db_state(name: String, state: &State) -> Result<(), GravityError> {
     }
 
     for pair in db_state.rel.iter() {
-	let (name, expr) = &pair;
+        let (target, expr) = &pair;
+        let name = match target {
+            RelTarget::Var(name) => name,
+            RelTarget::RecField { name, key, field } => todo!(),
+        };
         lines.push(create_relationship(name, expr));
     }
 
@@ -154,7 +160,11 @@ pub fn dump_db(name: String) -> Result<(), GravityError> {
     }
 
     for pair in db_state.rel.into_iter() {
-	let (name, expr) = &pair;
+        let (target, expr) = &pair;
+        let name = match target {
+            RelTarget::Var(name) => name,
+            RelTarget::RecField { name, key, field } => todo!(),
+        };
         lines.push(create_relationship(name, expr));
     }
 

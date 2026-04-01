@@ -2,7 +2,7 @@ use crate::{ast::RecField, error::GravityError, parse::ast::Op};
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use super::ast::{Expr, Program, RecDef, Statement, Type};
+use super::ast::{Expr, Program, RecDef, RelTarget, Statement, Type};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Assignment {
@@ -24,7 +24,7 @@ impl From<Statement> for Assignment {
 pub struct State {
     pub vars: IndexMap<String, Value>,
     pub def: Vec<Assignment>,
-    pub rel: Vec<(String, Expr)>,
+    pub rel: Vec<(RelTarget, Expr)>,
     pub recs: Vec<Record>,
 }
 
@@ -50,7 +50,7 @@ impl State {
         Self {
             vars: IndexMap::<String, Value>::new(),
             def: Vec::<Assignment>::new(),
-            rel: Vec::<(String, Expr)>::new(),
+            rel: Vec::<(RelTarget, Expr)>::new(),
             recs: Vec::<Record>::new(),
         }
     }
@@ -61,9 +61,37 @@ impl State {
             let base = eval_expr(&v.expr, self, &v.name);
             self.vars.insert(v.name.clone(), base);
         }
-        for (name, expr) in self.rel.iter() {
-            let val = eval_expr(expr, self, name);
-            self.vars.insert(name.clone(), val);
+        for (target, expr) in self.rel.iter() {
+            match target {
+                RelTarget::Var(name) => {
+                    let val = eval_expr(expr, self, &name);
+                    self.vars.insert(name.clone(), val);
+                }
+                RelTarget::RecField { name, key, field } => {
+                    let key_val = eval_expr(key, self, name).to_string();
+                    let field_value = self
+                        .recs
+                        .iter()
+                        .find(|r| r.schema.name == *name)
+                        .unwrap()
+                        .rows
+                        .get(&key_val)
+                        .unwrap()
+                        .get(field)
+                        .unwrap()
+                        .to_owned();
+
+                    let value_eval = eval_expr_value(expr, self, &field_value);
+                    self.recs
+                        .iter_mut()
+                        .find(|r| r.schema.name == *name)
+                        .unwrap()
+                        .rows
+                        .get_mut(&key_val)
+                        .unwrap()
+                        .insert(field.clone(), value_eval);
+                }
+            }
         }
     }
 }
@@ -156,6 +184,19 @@ pub fn eval_expr_nameless(expr: &Expr, state: &State) -> Result<Value, GravityEr
             }
         }
         Expr::SelfRef => Err(GravityError::SelfRef),
+	Expr::RecIndex { name, key, field } => {
+	    let key_val = eval_expr_nameless(key, state)?.to_string();
+	    Ok(state.recs
+		.iter()
+		.find(|r| r.schema.name == *name)
+		.unwrap()
+		.rows
+		.get(&key_val)
+		.unwrap()
+		.get(field)
+		.unwrap()
+		.clone())
+	},
     }
 }
 
@@ -218,6 +259,76 @@ fn eval_expr(expr: &Expr, state: &State, name: &str) -> Value {
                 _ => unreachable!("type checker should block this"),
             }
         }
+        Expr::RecIndex { name, key, field } => todo!(),
+    }
+}
+
+fn eval_expr_value(expr: &Expr, state: &State, value: &Value) -> Value {
+    match expr {
+        Expr::Number(n) => Value::Number(*n),
+        Expr::Decimal(d) => Value::Decimal(*d),
+        Expr::Bool(b) => Value::Boolean(*b),
+        Expr::Text(s) => Value::Text(s.to_owned()),
+        Expr::Ident(n) => state.vars.get(n).unwrap().clone(),
+        Expr::SelfRef => value.to_owned(),
+        Expr::Negate(e) => match eval_expr_value(e, state, &value) {
+            Value::Number(n) => Value::Number(-n),
+            Value::Decimal(d) => Value::Decimal(-d),
+            _ => unreachable!("how did this get past the type checker"),
+        },
+        Expr::Factorial(e, bangs) => {
+            let val = eval_expr_value(e, state, &value);
+            match val {
+                Value::Number(v) => {
+                    let result = (1..=v)
+                        .filter(|i| (v - i) % (*bangs as i64) == 0)
+                        .fold(1i64, |acc, i| acc * i);
+                    Value::Number(result)
+                }
+                _ => unreachable!(),
+            }
+        }
+        Expr::BinOp(left, op, right) => {
+            let lhs = eval_expr_value(left, state, &value);
+            let rhs = eval_expr_value(right, state, &value);
+            match (lhs, rhs) {
+                (Value::Number(l), Value::Number(r)) => match op {
+                    Op::Add => Value::Number(l + r),
+                    Op::Sub => Value::Number(l - r),
+                    Op::Mul => Value::Number(l * r),
+                    Op::Div => Value::Number(l / r),
+                    Op::Mod => Value::Number(l.rem_euclid(r)),
+                    Op::Pow => Value::Number(l.pow(r as u32)),
+                },
+                (Value::Decimal(l), Value::Decimal(r)) => match op {
+                    Op::Add => Value::Decimal(l + r),
+                    Op::Sub => Value::Decimal(l - r),
+                    Op::Mul => Value::Decimal(l * r),
+                    Op::Div => Value::Decimal(l / r),
+                    Op::Mod => Value::Decimal(l.rem_euclid(r)),
+                    Op::Pow => Value::Decimal(l.powf(r)),
+                },
+                (Value::Text(l), Value::Text(r)) => match op {
+                    Op::Add => Value::Text(l + &r),
+                    _ => unreachable!("Text can only be concatenated"),
+                },
+                _ => unreachable!("type checker should block this"),
+            }
+        },
+        Expr::RecIndex { name, key, field } => {
+            let key_val = eval_expr_value(key, state, value).to_string();
+            state
+                .recs
+                .iter()
+                .find(|r| r.schema.name == *name)
+                .unwrap()
+                .rows
+                .get(&key_val)
+                .unwrap()
+                .get(field)
+                .unwrap()
+                .clone()
+        }
     }
 }
 
@@ -238,7 +349,7 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
                 expr: expr,
                 typ: typ,
             }),
-            Statement::Relationship { name, expr } => {
+            Statement::Relationship { target: name, expr } => {
                 state.rel.push((name.clone(), expr));
             }
             Statement::Insertion { target, exprs } => {
@@ -247,7 +358,11 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
                     vals.push(eval_expr_nameless(&e, &state)?);
                 }
 
-                let found = state.recs.iter_mut().find(|r| r.schema.name == target).unwrap();
+                let found = state
+                    .recs
+                    .iter_mut()
+                    .find(|r| r.schema.name == target)
+                    .unwrap();
 
                 let pairs = vals
                     .into_iter()
@@ -261,9 +376,9 @@ pub fn eval_program(prg: Program) -> Result<State, GravityError> {
                     .map(|(v, f)| (f.name, v))
                     .collect::<IndexMap<String, Value>>();
 
-		if found.rows.contains_key(&key) {
-		    return Err(GravityError::Duplication(key))
-		}
+                if found.rows.contains_key(&key) {
+                    return Err(GravityError::Duplication(key));
+                }
 
                 found.rows.insert(key, ktv);
             }

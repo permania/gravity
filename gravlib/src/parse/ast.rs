@@ -8,10 +8,20 @@ use crate::error::GravityError;
 #[grammar = "grammar.pest"]
 pub struct GravityParser;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum RelTarget {
+    Var(String),
+    RecField {
+        name: String,
+        key: Expr,
+        field: String,
+    },
+}
+
 #[derive(Debug, Clone)]
 pub enum Statement {
     Assignment { typ: Type, name: String, expr: Expr },
-    Relationship { name: String, expr: Expr },
+    Relationship { target: RelTarget, expr: Expr },
     Insertion { target: String, exprs: Vec<Expr> },
 }
 
@@ -26,6 +36,11 @@ pub enum Expr {
     Negate(Box<Expr>),
     Factorial(Box<Expr>, u32),
     BinOp(Box<Expr>, Op, Box<Expr>),
+    RecIndex {
+        name: String,
+        key: Box<Expr>,
+        field: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -95,7 +110,6 @@ pub fn parse_program(contents: String) -> Program {
     let mut recs = Vec::<RecDef>::new();
 
     let pairs = GravityParser::parse(Rule::program, &contents).expect("parse failed");
-
     for pair in pairs {
         for statement in pair.into_inner() {
             if statement.as_rule() == Rule::statement {
@@ -194,6 +208,17 @@ fn parse_expr(pair: Pair<Rule>) -> Expr {
             Expr::Factorial(Box::new(atom), bang_count)
         }
         Rule::self_ref => Expr::SelfRef,
+        Rule::rec_index => {
+            let mut inner = pair.into_inner();
+            let name = inner.next().unwrap().as_str().to_string();
+            let key = parse_expr(inner.next().unwrap());
+            let field = inner.next().unwrap().as_str().to_string();
+            Expr::RecIndex {
+                name,
+                key: Box::new(key),
+                field,
+            }
+        },
         _ => parse_expr(pair.into_inner().next().unwrap()),
     }
 }
@@ -219,11 +244,25 @@ pub fn parse_assignment(pair: Pair<Rule>) -> Statement {
 
 pub fn parse_relationship(pair: Pair<Rule>) -> Statement {
     let mut inner = pair.into_inner();
-    let ident = inner.next().unwrap().as_str().to_string();
+
+    let target = inner.next().unwrap();
+    let inner_pair = target.into_inner().next().unwrap();
+    let target_final = match inner_pair.as_rule() {
+        Rule::identifier => RelTarget::Var(inner_pair.as_str().to_owned()),
+        Rule::rec_index => {
+            let mut rec_inner = inner_pair.into_inner();
+            let name = rec_inner.next().unwrap().as_str().to_owned();
+            let key = parse_expr(rec_inner.next().unwrap());
+            let field = rec_inner.next().unwrap().as_str().to_owned();
+            RelTarget::RecField { name, key, field }
+        }
+        _ => unreachable!("parse relationship"),
+    };
+
     let val = parse_expr(inner.next().unwrap());
 
     Statement::Relationship {
-        name: ident,
+        target: target_final,
         expr: val,
     }
 }

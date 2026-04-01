@@ -1,2 +1,8 @@
+dec a = 5.0;
+dec b = 2.0;
+
 rec items { key num id; text name; dec price; dec discount; };
-items << { 0, "orange", 1.00, 0.1};
+items << { 0, "orange", 1.00, 0.1 };
+items << { 1, "apple", 0.00, 0.1 };
+items{1}{price} <- a + b;
+items{1}{price} <- % * (1.0 - items{1}{discount});

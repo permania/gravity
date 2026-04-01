@@ -1,5 +1,10 @@
+cargo-features = ["profile-rustflags"]
+
 [workspace]
 metadata.crane.name = "gravity-db"
 package.version = "0.1.0"
 resolver = "3"
 members = ["gravity", "gravlib"]
+
+[profile.dev]
+rustflags = ["-A", "warnings"]

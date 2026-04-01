@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use gravlib::ast::{GravityParser, Type};
+use gravlib::ast::{GravityParser, RecDef, RelTarget, Type};
 use gravlib::error::GravityError;
 use gravlib::eval::eval_expr_nameless;
 use gravlib::typecheck::expr_type_state;
@@ -81,7 +81,15 @@ fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
         .map(|d| expr_type_state(&d.expr, context).map(|t| (d.name.clone(), t)))
         .collect::<Result<HashMap<_, _>, _>>()?;
 
-    typecheck::check_assignment(&Type::try_from(typ.as_str())?, ident, &expr, &mut defined)?;
+    let mut defined_recs: Vec<RecDef> = context.recs.iter().map(|r| r.schema.clone()).collect();
+
+    typecheck::check_assignment(
+        &Type::try_from(typ.as_str())?,
+        ident,
+        &expr,
+        &mut defined,
+        &mut defined_recs,
+    )?;
 
     if context.vars.contains_key(ident) {
         return Err(GravityError::Duplication(ident.to_owned()));
@@ -95,46 +103,51 @@ fn add(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, G
 fn remove(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
     let ident = args.get_one::<String>("var").unwrap();
     context.def.retain(|d| &d.name != ident);
-    context.rel.retain(|d| &d.0 != ident);
+    context.rel.retain(|d| match d {
+        (RelTarget::Var(name), _) => name != ident,
+        (RelTarget::RecField { name, key, field }, _) => todo!(),
+    });
 
     Ok(None)
 }
 
 fn relate(args: ArgMatches, context: &mut GravityState) -> Result<Option<String>, GravityError> {
-    let ident = args.get_one::<String>("var").unwrap();
+    todo!();
 
-    if !context.def.iter().any(|d| d.name == *ident) {
-        return Err(GravityError::UndefinedVariable(ident.to_owned()));
-    }
+    // let ident = args.get_one::<String>("var").unwrap();
 
-    let expr = args
-        .get_many::<String>("expr")
-        .unwrap()
-        .cloned()
-        .collect::<Vec<_>>()
-        .join(" ");
+    // if !context.def.iter().any(|d| d.name == *ident) {
+    //     return Err(GravityError::UndefinedVariable(ident.to_owned()));
+    // }
 
-    let content = format!("{} <- {};", ident, expr);
-    let pair = GravityParser::parse(Rule::relationship, &content)?
-        .next()
-        .unwrap();
-    let rel = ast::parse_relationship(pair);
+    // let expr = args
+    //     .get_many::<String>("expr")
+    //     .unwrap()
+    //     .cloned()
+    //     .collect::<Vec<_>>()
+    //     .join(" ");
 
-    let mut defined: HashMap<String, Type> = context
-        .def
-        .iter()
-        .map(|d| expr_type_state(&d.expr, context).map(|t| (d.name.clone(), t)))
-        .collect::<Result<HashMap<_, _>, _>>()?;
+    // let content = format!("{} <- {};", ident, expr);
+    // let pair = GravityParser::parse(Rule::relationship, &content)?
+    //     .next()
+    //     .unwrap();
+    // let rel = ast::parse_relationship(pair);
 
-    let expr = if let ast::Statement::Relationship { expr, .. } = rel.clone() {
-        expr
-    } else {
-        unreachable!("assignment");
-    };
+    // let mut defined: HashMap<String, Type> = context
+    //     .def
+    //     .iter()
+    //     .map(|d| expr_type_state(&d.expr, context).map(|t| (d.name.clone(), t)))
+    //     .collect::<Result<HashMap<_, _>, _>>()?;
 
-    typecheck::check_relationship(ident, &expr, &mut defined)?;
+    // let expr = if let ast::Statement::Relationship { expr, .. } = rel.clone() {
+    //     expr
+    // } else {
+    //     unreachable!("assignment");
+    // };
 
-    context.rel.push((ident.clone(), expr));
+    // typecheck::check_relationship(ident, &expr, &mut defined)?;
+
+    // context.rel.push((ident.clone(), expr));
 
     Ok(None)
 }
@@ -155,9 +168,10 @@ fn unrelate(args: ArgMatches, context: &mut GravityState) -> Result<Option<Strin
             .join(" ")
     );
 
-    context
-        .rel
-        .retain(|p| !(&p.0 == ident && expr_to_string(&p.1) == expr));
+    context.rel.retain(|p| match p {
+        (RelTarget::Var(name), _) => !(name == ident && expr_to_string(&p.1) == expr),
+        _ => todo!(),
+    });
 
     Ok(None)
 }
@@ -172,10 +186,10 @@ fn relates(args: ArgMatches, context: &mut GravityState) -> Result<Option<String
     let var_def = context
         .rel
         .iter()
-        .filter(|(name, _)| name == ident)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .map(|p| expr_to_string(&p.1))
+        .filter_map(|(target, expr)| match target {
+            RelTarget::Var(name) if name == ident => Some(expr_to_string(expr)),
+            _ => todo!("bad"),
+        })
         .collect::<Vec<_>>()
         .join("\n");
 

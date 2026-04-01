@@ -17,7 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         GravityCommand::State(DBArg { db_name: name }) => state_db(name)?,
         GravityCommand::Compile(DBArg { db_name: name }) => compile_db(name)?,
         GravityCommand::Dump(DBArg { db_name: name }) => dump_db(name)?,
-        GravityCommand::Repl(DBArg { db_name: name }) => repl::run(name)?,
+	GravityCommand::Repl(DBArg { db_name: name }) => repl::run(name)?,
     }
 
     Ok(())
